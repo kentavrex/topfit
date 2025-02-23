@@ -27,7 +27,9 @@ class SaveUserMiddleware(BaseMiddleware):
 
     @staticmethod
     def _get_new_user_message(user: UserSchema) -> str:
-        return (f"Новый пользователь бота:\n"
-                f"ID: {user.telegram_id}\n"
-                f"Имя: {user.first_name} {user.last_name or ""}"
-                f"\n\n{"" + user.username or ""}")
+        return (
+            f"Новый пользователь бота:\n"
+            f"ID: {user.telegram_id}\n"
+            f"Имя: {user.first_name} {user.last_name or ""}"
+            f"\n\n{"" + user.username or ""}"
+        )

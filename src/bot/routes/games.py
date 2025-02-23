@@ -49,7 +49,7 @@ def _get_players_builder(players: list[PlayerSchema], seat_number: int, game_id:
 
 def _get_game_keyboard(game: GameSchema) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    for number in [5,6,4,7,3,8,2,9,1,10]:
+    for number in [5, 6, 4, 7, 3, 8, 2, 9, 1, 10]:
         player = _get_player_by_number(number, game.players)
         builder.button(
             text=f"{number}. {player.nickname + " " + get_role_emoji(player.role) if player else "--"}",

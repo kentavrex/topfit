@@ -7,7 +7,7 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes: [".pgdata:/var/lib/postgresql@17/data/pgdata"]
     ports:
-      - "5432:5432"
+      - "6432:5432"
     env_file: .env
   bot:
     build: .

@@ -1,11 +1,12 @@
+import pytz
 from pydantic_settings import BaseSettings
 
 
 class DBConfig(BaseSettings):
-    DB_HOST: str = ''
-    DB_NAME: str = ''
-    DB_USER: str = ''
-    DB_PASSWORD: str = ''
+    DB_HOST: str = ""
+    DB_NAME: str = ""
+    DB_USER: str = ""
+    DB_PASSWORD: str = ""
     DB_PORT: int = 5432
 
     @property
@@ -14,8 +15,9 @@ class DBConfig(BaseSettings):
 
 
 class Settings(BaseSettings):
+    moscow_tz = pytz.timezone("Europe/Moscow")
     db_config: DBConfig = DBConfig()
-    TELEGRAM_BOT_TOKEN: str = ''
+    TELEGRAM_BOT_TOKEN: str = ""
     ADMIN_ID: int = 0
 
 

@@ -5,7 +5,7 @@ WORKDIR ${APP_DIR}
 
 COPY src ./src
 COPY alembic ./alembic
-COPY alembic.ini entrypoint.sh pyproject.toml .python-version uv.lock ./
+COPY alembic.ini entrypoint.sh pyproject.toml uv.lock ./
 
 RUN pip install --root-user-action ignore uv
 RUN uv sync --no-dev --compile-bytecode

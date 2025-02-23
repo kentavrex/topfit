@@ -3,7 +3,7 @@ from usecases.schemas import UserSchema
 
 
 class UsersUseCase:
-    def __init__(self, db: DBRepositoryInterface)-> None:
+    def __init__(self, db: DBRepositoryInterface) -> None:
         self._db = db
 
     async def save_user(self, user: UserSchema) -> None:
