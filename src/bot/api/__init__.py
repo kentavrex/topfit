@@ -44,18 +44,20 @@ async def get_daily_statistics(message: types.Message):
     counted_statistics = await uc.get_statistics(user_id=user_id)
     await message.answer(
         f"📅 **Статистика за сегодня**:\n"
-        f"🥩 **Белки**: {counted_statistics.protein:.2f} г\n"
-        f"🧈 **Жиры**: {counted_statistics.fat:.2f} г\n"
-        f"🍞 **Углеводы**: {counted_statistics.carbohydrates:.2f} г\n"
-        f"🔥 **Калории**: {counted_statistics.calories:.2f} ккал\n",
+        f"🥩 **Белки**: {counted_statistics.protein:.1f} г\n"
+        f"🧈 **Жиры**: {counted_statistics.fat:.1f} г\n"
+        f"🍞 **Углеводы**: {counted_statistics.carbohydrates:.1f} г\n"
+        f"🔥 **Калории**: {counted_statistics.calories:.1f} ккал\n",
         parse_mode="Markdown",
     )
 
 @router.message(F.text.lower() == "ai рекомендация")
 async def generate_user_dish_recommendation(message: types.Message):
     await message.answer(
-        f"🍽 **Рекомендуемое блюдо для вас** (основано на том, сколько вам еще нужно добрать КБЖУ за сегодня и на ваших предпочтениях, взятых из истории ваших блюд):\n"
-        "Мы учитываем вашу цель по КБЖУ и предпочтения, основанные на истории ваших блюд, чтобы предложить вам подходящее блюдо, которое будет соответствовать вашим потребностям на текущий день.",
+        f"🍽 **Рекомендуемое блюдо для вас** (основано на том, сколько вам еще нужно добрать КБЖУ "
+        f"за сегодня и на ваших предпочтениях, взятых из истории ваших блюд):\n"
+        "Мы учитываем вашу цель по КБЖУ и предпочтения, основанные на истории ваших блюд, "
+        "чтобы предложить вам подходящее блюдо, которое будет соответствовать вашим потребностям на текущий день.",
         parse_mode="Markdown"
     )
     user_id = message.from_user.id
@@ -74,10 +76,10 @@ async def generate_user_dish_recommendation(message: types.Message):
     await message.answer(
         f"**Блюдо**: {recommendation.name}\n\n"
         f"**Состав**:\n"
-        f"• Белки: {recommendation.protein} г\n"
-        f"• Жиры: {recommendation.fat} г\n"
-        f"• Углеводы: {recommendation.carbohydrates} г\n"
-        f"• Калории: {recommendation.calories} ккал\n",
+        f"• Белки: {recommendation.protein:.1f} г\n"
+        f"• Жиры: {recommendation.fat:.1f} г\n"
+        f"• Углеводы: {recommendation.carbohydrates:.1f} г\n"
+        f"• Калории: {recommendation.calories:.1f} ккал\n",
         parse_mode="Markdown"
     )
     await message.answer(
@@ -131,9 +133,9 @@ async def set_nutrition_goal(message: types.Message):
         return None
     await message.answer(
         f"📅 **Ваша дневная цель КБЖУ**:\n"
-        f"🥩 **Белки**: {nutrition.protein:.2f} г\n"
-        f"🧈 **Жиры**: {nutrition.fat:.2f} г\n"
-        f"🍞 **Углеводы**: {nutrition.carbohydrates:.2f} г\n"
-        f"🔥 **Калории**: {nutrition.calories:.2f} ккал\n",
+        f"🥩 **Белки**: {nutrition.protein:.1f} г\n"
+        f"🧈 **Жиры**: {nutrition.fat:.1f} г\n"
+        f"🍞 **Углеводы**: {nutrition.carbohydrates:.1f} г\n"
+        f"🔥 **Калории**: {nutrition.calories:.1f} ккал\n",
         parse_mode="Markdown",
     )
