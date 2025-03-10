@@ -1,29 +1,27 @@
 import datetime
 
+import pytz
 from sqlalchemy import BigInteger, ForeignKey
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
-from src.config import settings
+from config import settings
 
 
 class Base(DeclarativeBase): ...
 
 
-class DailyIntake(Base):
-    __tablename__ = "daily_intakes"
+class Nutrition(Base):
+    __tablename__ = "nutrition"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.telegram_id"))
-    date: Mapped[datetime.date] = mapped_column()
-    protein: Mapped[float] = mapped_column(default=0.0)  # Белки
-    fat: Mapped[float] = mapped_column(default=0.0)  # Жиры
-    carbohydrates: Mapped[float] = mapped_column(default=0.0)  # Углеводы
-    calories: Mapped[float] = mapped_column(default=0.0)  # Калории
-
-    user: Mapped["User"] = relationship(back_populates="daily_intakes")
+    protein: Mapped[float]
+    fat: Mapped[float]
+    carbohydrates: Mapped[float]
+    calories: Mapped[float]
 
     def __repr__(self) -> str:
-        return f"<DailyIntake user_id={self.user_id} date={self.date} calories={self.calories}>"
+        return (f"<Nutrition protein={self.protein} fat={self.fat} "
+                f"carbohydrates={self.carbohydrates} calories={self.calories}>")
 
 
 class Dish(Base):
@@ -31,15 +29,12 @@ class Dish(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     name: Mapped[str]
-    description: Mapped[str | None]
-    protein: Mapped[float]
-    fat: Mapped[float]
-    carbohydrates: Mapped[float]
-    calories: Mapped[float]
-    image_url: Mapped[str | None]  # Для хранения изображения из s3
+    nutrition_id: Mapped[int] = mapped_column(ForeignKey("nutrition.id"))
+
+    nutrition: Mapped["Nutrition"] = relationship()
 
     def __repr__(self) -> str:
-        return f"<Dish name={self.name} calories={self.calories}>"
+        return f"<Dish name={self.name} calories={self.nutrition.calories}>"
 
 
 class RecommendationHistory(Base):
@@ -48,7 +43,7 @@ class RecommendationHistory(Base):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.telegram_id"))
     dish_id: Mapped[int] = mapped_column(ForeignKey("dishes.id"))
-    created_at: Mapped[datetime.datetime] = mapped_column(default=datetime.datetime.now(settings.moscow_tz))
+    created_at: Mapped[datetime.datetime] = mapped_column(default=datetime.datetime.now(settings.moscow_tz).replace(tzinfo=None))
 
     user: Mapped["User"] = relationship(back_populates="recommendation_history")
     dish: Mapped["Dish"] = relationship()
@@ -61,19 +56,20 @@ class RecommendationHistory(Base):
         )
 
 
-class UserPreference(Base):
-    __tablename__ = "user_preferences"
+class Statistics(Base):
+    __tablename__ = "statistics"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.telegram_id"))
     dish_id: Mapped[int] = mapped_column(ForeignKey("dishes.id"))
-    like: Mapped[bool]  # Оценка блюда (нравится/не нравится)
+    date: Mapped[datetime.date] =  mapped_column(default=datetime.datetime.now(settings.moscow_tz).date())
+    like: Mapped[bool]  = mapped_column(default=True) # Оценка блюда (нравится/не нравится)
 
-    user: Mapped["User"] = relationship(back_populates="preferences")
+    user: Mapped["User"] = relationship(back_populates="statistics")
     dish: Mapped["Dish"] = relationship()
 
     def __repr__(self) -> str:
-        return f"<UserPreference user_id={self.user_id} dish_name={self.dish.name} like={self.like}>"
+        return f"<Statistics user_id={self.user_id} date={self.date} add dish_id={self.dish_id}>"
 
 
 class User(Base):
@@ -83,10 +79,11 @@ class User(Base):
     first_name: Mapped[str]
     last_name: Mapped[str | None]
     username: Mapped[str | None]
+    nutrition_goal_id: Mapped[int | None] = mapped_column(ForeignKey("nutrition.id"))
 
-    daily_intakes: Mapped[list["DailyIntake"]] = relationship(back_populates="user")
-    recommendations: Mapped[list["RecommendationHistory"]] = relationship(back_populates="user")
-    preferences: Mapped[list["UserPreference"]] = relationship(back_populates="user")
+    statistics: Mapped[list["Statistics"]] = relationship(back_populates="user")
+    recommendation_history: Mapped[list["RecommendationHistory"]] = relationship(back_populates="user")
+    nutrition_goal: Mapped["Nutrition"] = relationship()
 
     def __repr__(self) -> str:
         return f"<User_id={self.telegram_id} username={self.username}>"

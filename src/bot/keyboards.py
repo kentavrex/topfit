@@ -1,17 +1,15 @@
 from aiogram.types import KeyboardButton, ReplyKeyboardMarkup
 
-admin_kb = ReplyKeyboardMarkup(
+
+user_kb = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text="Список игроков")],
-        [KeyboardButton(text="Сгенерировать рассадку")],
-        [KeyboardButton(text="Создать игрока"), KeyboardButton(text="Создать игру")],
+        [KeyboardButton(text="Текущая цель"),
+         KeyboardButton(text="Обновить цель"),
+         KeyboardButton(text="Статистика")],
+        [KeyboardButton(text="Добавить блюдо")],
+        [KeyboardButton(text="AI рекомендация")],
     ],
     resize_keyboard=True,
 )
 
-user_kb = ReplyKeyboardMarkup(
-    keyboard=[
-        [KeyboardButton(text="Список игроков")],
-    ],
-    resize_keyboard=True,
-)
+admin_kb = user_kb

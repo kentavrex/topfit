@@ -1,23 +1,13 @@
+import datetime
 from typing import Self
 
-from sqlalchemy import Row, and_, case, delete, desc, func, or_, select, update
+from sqlalchemy import select, update, and_
 from sqlalchemy.ext.asyncio import async_sessionmaker
 from sqlalchemy.orm import joinedload
 
-import core
-from usecases.errors import NotFoundError
 from usecases.interfaces import DBRepositoryInterface
-from usecases.schemas import (
-    CreateGameSchema,
-    CreatePlayerSchema,
-    GameSchema,
-    PlayerSchema,
-    UpdateGameSchema,
-    UserSchema,
-)
-from usecases.schemas.games import PlayerInGameSchema, RawGameSchema
-
-from .models import Game, Player, PlayerGame, User
+from usecases.schemas import UserSchema, DishData, DishSchema, NutritionData, NutritionSchema
+from .models import User, Statistics, Dish, RecommendationHistory, Nutrition
 
 
 class DBRepository(DBRepositoryInterface):
@@ -37,168 +27,104 @@ class DBRepository(DBRepositoryInterface):
         finally:
             await self._session.close()
 
-    async def create_player(self, player: CreatePlayerSchema) -> None:
-        new_user = Player(fio=player.fio, nickname=player.nickname)
-        self._session.add(new_user)
-        await self._session.flush()
-
     async def create_user(self, user: UserSchema) -> None:
         self._session.add(User(**user.model_dump()))
         await self._session.flush()
 
     async def get_users(self) -> list[UserSchema]:
         return [
-            UserSchema.model_validate(u, from_attributes=True)
+            UserSchema.model_validate(u)
             for u in (await self._session.scalars(select(User))).all()
         ]
 
-    async def get_players(
-        self,
-        limit: int | None,
-        offset: int | None,
-    ) -> list[PlayerSchema]:
-        query = (
-            select(
-                Player.id,
-                Player.fio,
-                Player.nickname,
-                func.coalesce(func.sum(case((Game.status == "ended", 1), else_=0)), 0).label("ended_games_count"),
-            )
-            .outerjoin(PlayerGame, Player.id == PlayerGame.player_id)
-            .outerjoin(Game, PlayerGame.game_id == Game.id)
-            .group_by(Player.id, Player.nickname)
-            .order_by(desc("ended_games_count"))
+    async def save_dish(self, dish_data: DishData) -> DishSchema:
+        nutrition = Nutrition(**dish_data.model_dump(exclude={"name"}))
+        self._session.add(nutrition)
+        await self._session.flush()
+
+        dish = Dish(name=dish_data.name, nutrition_id=nutrition.id)
+        self._session.add(dish)
+        await self._session.flush()
+
+        return DishSchema(id=dish.id,
+                          name=dish.name,
+                          protein=dish.nutrition.protein,
+                          fat=dish.nutrition.fat,
+                          carbohydrates=dish.nutrition.carbohydrates,
+                          calories=dish.nutrition.calories)
+
+    async def add_statistics_obj(self, user_id: int, dish_id: int, like: bool = True) -> None:
+        statistics_obj = Statistics(
+            user_id=user_id,
+            dish_id=dish_id,
+            like=like,
         )
-        if offset is not None:
-            query = query.offset(offset)
-        if limit is not None:
-            query = query.limit(limit)
-        raw_players = (await self._session.execute(query)).all()
-        return [self._format_player(p) for p in raw_players]
+        self._session.add(statistics_obj)
+        await self._session.flush()
 
-    @staticmethod
-    def _format_player(raw_player: Row) -> PlayerSchema:
-        return PlayerSchema(id=raw_player[0], fio=raw_player[1], nickname=raw_player[2])
+    async def get_user_dishes_history_by_period(
+            self, user_id: int, date_from: datetime.date, date_to: datetime.date
+    ) -> list[DishSchema]:
+        query = (
+            select(Statistics)
+            .filter(Statistics.user_id == user_id)
+            .filter(Statistics.date >= date_from)
+            .filter(Statistics.date <= date_to)
+        ).options(
+            joinedload(Statistics.dish).joinedload(Dish.nutrition)
+        )
+        statistics = await self._session.scalars(query)
 
-    async def get_player_by_id(self, player_id: int) -> PlayerSchema:
-        query = select(Player).where(Player.id == player_id)
+        return [
+            DishSchema(
+                id=stat.dish.id,
+                name=stat.dish.name,
+                protein=stat.dish.nutrition.protein,
+                fat=stat.dish.nutrition.fat,
+                carbohydrates=stat.dish.nutrition.carbohydrates,
+                calories=stat.dish.nutrition.calories
+            )
+            for stat in statistics
+        ]
+
+    async def get_user_dishes_history(self, user_id: int, limit: int = 50) -> list[str]:
+        query = (
+            select(Statistics)
+            .filter(Statistics.user_id == user_id)
+            .limit(limit)
+            .options(joinedload(Statistics.dish))
+        )
+
+        statistics = await self._session.scalars(query)
+        return [stat.dish.name for stat in statistics]
+
+    async def save_user_recommendation(self, user_id: int, dish_id: int) -> None:
+        user_recommendation = RecommendationHistory(user_id=user_id, dish_id=dish_id)
+        self._session.add(user_recommendation)
+        await self._session.flush()
+
+    async def save_nutrition(self, nutrition_data: NutritionData) -> NutritionSchema:
+        nutrition = Nutrition(**nutrition_data.model_dump())
+        self._session.add(nutrition)
+        await self._session.flush()
+        return NutritionSchema.model_validate(nutrition)
+
+    async def set_user_nutrition_goal(self, user_id: int, nutrition_goal_id: int) -> None:
+        query = (
+            update(User)
+            .where(and_(User.telegram_id == user_id))
+            .values({"nutrition_goal_id": nutrition_goal_id})
+        )
+        await self._session.execute(query)
+        await self._session.flush()
+
+    async def get_user_nutrition_goal(self, user_id: int) -> NutritionSchema | None:
+        query = (
+            select(User)
+            .filter(User.telegram_id == user_id)
+            .options(joinedload(User.nutrition_goal))
+        )
         user = await self._session.scalar(query)
-        if not user:
-            raise NotFoundError(f"User id={player_id} not found")
-        return PlayerSchema.model_validate(user, from_attributes=True)
-
-    @staticmethod
-    def _format_game(game: Game) -> GameSchema:
-        return GameSchema(
-            id=game.id,
-            comments=game.comments,
-            result=game.result,
-            status=game.status,
-            players=[
-                PlayerInGameSchema(
-                    id=p.player.id,
-                    fio=p.player.fio,
-                    nickname=p.player.nickname,
-                    role=p.role,
-                    number=p.number,
-                )
-                for p in game.players
-            ],
-            created_at=game.created_at,
-        )
-
-    async def get_game_by_id(self, game_id: int) -> GameSchema:
-        query = select(Game).where(Game.id == game_id).options(joinedload(Game.players).joinedload(PlayerGame.player))
-        game = (await self._session.scalars(query)).first()
-        if not game:
-            raise NotFoundError(f"Game id={game_id} not found")
-        return self._format_game(game)
-
-    async def get_games(
-        self,
-        player_id: int | None = None,
-        seat_number: int | None = None,
-        role__in: list[core.Roles] | None = None,
-        result__in: list[core.GameResults] | None = None,
-        status: core.GameStatuses | None = None,
-        is_won: bool | None = None,
-    ) -> list[GameSchema]:
-        query = (
-            select(Game).join(PlayerGame).join(Player).options(joinedload(Game.players).joinedload(PlayerGame.player))
-        )
-        if player_id is not None:
-            query = query.where(PlayerGame.player_id == player_id)
-        if role__in is not None:
-            query = query.where(PlayerGame.role.in_(role__in))
-        if result__in is not None:
-            query = query.where(Game.result.in_(result__in))
-        if seat_number is not None:
-            query = query.where(PlayerGame.number == seat_number)
-        if status is not None:
-            query = query.where(Game.status == status)
-        if is_won is not None:
-            if player_id is None:
-                raise Exception("player_id must be defined to use filter 'is_won'")
-            query = query.where(
-                or_(
-                    and_(
-                        PlayerGame.role.in_([core.Roles.SHERIFF, core.Roles.CIVILIAN]),
-                        Game.result == core.GameResults.CIVILIANS_WON,
-                    ),
-                    and_(
-                        PlayerGame.role.in_([core.Roles.MAFIA, core.Roles.DON]),
-                        Game.result == core.GameResults.MAFIA_WON,
-                    ),
-                )
-            )
-        games = (await self._session.execute(query)).scalars().unique().all()
-        return [self._format_game(g) for g in games]
-
-    async def add_player(self, game_id: int, player_id: int, seat_number: int, role: core.Roles) -> None:
-        player_in_game = PlayerGame(
-            player_id=player_id,
-            number=seat_number,
-            role=role,
-            game_id=game_id,
-        )
-        self._session.add(player_in_game)
-        await self._session.flush()
-
-    async def get_players_count(self) -> int:
-        query = select(func.count(Player.id))
-        return await self._session.scalar(query)
-
-    async def remove_player_from_game(self, game_id: int, player_id: int) -> None:
-        query = delete(PlayerGame).where(and_(PlayerGame.player_id == player_id, PlayerGame.game_id == game_id))
-        await self._session.execute(query)
-        await self._session.flush()
-
-    async def remove_player_on_seat(self, game_id: int, seat_number: int) -> None:
-        query = delete(PlayerGame).where(and_(PlayerGame.number == seat_number, PlayerGame.game_id == game_id))
-        await self._session.execute(query)
-        await self._session.flush()
-
-    async def update_game(self, game_id: int, data: UpdateGameSchema) -> None:
-        query = update(Game).where(Game.id == game_id).values(**data.model_dump(exclude_none=True))
-        await self._session.execute(query)
-        await self._session.flush()
-
-    async def create_game(self, data: CreateGameSchema) -> RawGameSchema:
-        game = Game(
-            created_at=data.created_at,
-            status=data.status,
-            result=data.result,
-            comments=data.comments,
-        )
-        self._session.add(game)
-        await self._session.flush()
-        game_players = [PlayerGame(game_id=game.id, player_id=p.id, role=p.role, number=p.number) for p in data.players]
-        self._session.add_all(game_players)
-        await self._session.flush()
-        return RawGameSchema(
-            id=game.id,
-            created_at=game.created_at,
-            status=game.status,
-            result=game.result,
-            comments=game.comments,
-        )
+        if user and user.nutrition_goal:
+            return NutritionSchema.model_validate(user.nutrition_goal)
+        return None

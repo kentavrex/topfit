@@ -1,16 +1,14 @@
+import datetime
 from abc import ABC, abstractmethod
 from typing import Self
 
-import core
 from usecases.schemas import (
-    CreateGameSchema,
-    CreatePlayerSchema,
-    GameSchema,
-    PlayerSchema,
-    UpdateGameSchema,
     UserSchema,
+    DishData,
+    DishSchema,
+    NutritionData,
+    NutritionSchema,
 )
-from usecases.schemas.games import RawGameSchema
 
 
 class DBRepositoryInterface(ABC):
@@ -21,52 +19,33 @@ class DBRepositoryInterface(ABC):
     async def __aexit__(self, exc_type, exc_val, exc_tb) -> None: ...
 
     @abstractmethod
-    async def create_player(self, player: CreatePlayerSchema) -> None: ...
-
-    @abstractmethod
     async def create_user(self, user: UserSchema) -> None: ...
-
-    @abstractmethod
-    async def get_players(
-        self,
-        limit: int | None,
-        offset: int | None,
-    ) -> list[PlayerSchema]: ...
 
     @abstractmethod
     async def get_users(self) -> list[UserSchema]: ...
 
     @abstractmethod
-    async def get_player_by_id(self, player_id: int) -> PlayerSchema: ...
+    async def save_dish(self, dish_data: DishData) -> DishSchema: ...
 
     @abstractmethod
-    async def add_player(self, game_id: int, player_id: int, seat_number: int, role: core.Roles) -> None: ...
+    async def add_statistics_obj(self, user_id: int, dish_id: int, like: bool = True) -> None: ...
 
     @abstractmethod
-    async def get_players_count(self) -> int: ...
+    async def get_user_dishes_history_by_period(
+            self, user_id: int, date_from: datetime.date, date_to: datetime.date
+    ) -> list[DishSchema]: ...
 
     @abstractmethod
-    async def remove_player_from_game(self, game_id: int, player_id: int) -> None: ...
+    async def get_user_dishes_history(self, user_id: int, limit: int = 50) -> list[str]: ...
 
     @abstractmethod
-    async def remove_player_on_seat(self, game_id: int, seat_number: int) -> None: ...
+    async def save_user_recommendation(self, user_id: int, dish_id: int) -> None: ...
 
     @abstractmethod
-    async def create_game(self, data: CreateGameSchema) -> RawGameSchema: ...
+    async def save_nutrition(self, nutrition_data: NutritionData) -> NutritionSchema: ...
 
     @abstractmethod
-    async def update_game(self, game_id: int, data: UpdateGameSchema) -> None: ...
+    async def set_user_nutrition_goal(self, user_id: int, nutrition_goal_id: int) -> None: ...
 
     @abstractmethod
-    async def get_game_by_id(self, game_id: int) -> GameSchema: ...
-
-    @abstractmethod
-    async def get_games(
-        self,
-        player_id: int | None = None,
-        seat_number: int | None = None,
-        role__in: list[core.Roles] | None = None,
-        result__in: list[core.GameResults] | None = None,
-        status: core.GameStatuses | None = None,
-        is_won: bool | None = None,
-    ) -> list[GameSchema]: ...
+    async def get_user_nutrition_goal(self, user_id: int) -> NutritionSchema | None: ...

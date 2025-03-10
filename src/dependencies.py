@@ -1,23 +1,21 @@
 from punq import Container
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-from config import DBConfig
-from repositories.db import DBRepository
+from config import DBConfig, GigachatConfig
+from repositories import DBRepository, GigachatClient
 from usecases import (
-    AssignPlayerToSeatUseCase,
-    CreateGameUseCase,
-    CreatePlayerUseCase,
-    GetPlayerStatsUseCase,
-    GetPlayersUseCase,
     UsersUseCase,
+    DishRecognitionUseCase,
+    RecommendationUseCase,
+    StatisticsUseCase,
 )
-from usecases.end_game import EndGameUseCase
-from usecases.get_game import GetGameUseCase
-from usecases.get_seat import GetSeatUseCase
-from usecases.interfaces import DBRepositoryInterface
+from usecases.interfaces import DBRepositoryInterface, AIClientInterface
+
 
 container = Container()
 db_config = DBConfig()
+gigachat_config = GigachatConfig()
+
 
 engine = create_async_engine(
     db_config.db_url,
@@ -29,15 +27,10 @@ engine = create_async_engine(
 
 session_factory = async_sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-
+container.register(AIClientInterface, factory=GigachatClient, config=gigachat_config)
 container.register(DBRepositoryInterface, factory=DBRepository, session_factory=session_factory)
 container.register(DBRepository, factory=DBRepository, session_factory=session_factory)
-container.register(CreatePlayerUseCase, factory=CreatePlayerUseCase)
-container.register(GetPlayersUseCase, factory=GetPlayersUseCase)
-container.register(CreateGameUseCase, factory=CreateGameUseCase)
-container.register(GetGameUseCase, factory=GetGameUseCase)
-container.register(EndGameUseCase, factory=EndGameUseCase)
-container.register(AssignPlayerToSeatUseCase, factory=AssignPlayerToSeatUseCase)
-container.register(GetPlayerStatsUseCase, factory=GetPlayerStatsUseCase)
-container.register(GetSeatUseCase, factory=GetSeatUseCase)
 container.register(UsersUseCase, factory=UsersUseCase)
+container.register(DishRecognitionUseCase, factory=DishRecognitionUseCase)
+container.register(StatisticsUseCase, factory=StatisticsUseCase)
+container.register(RecommendationUseCase, factory=RecommendationUseCase)

@@ -1,6 +1,10 @@
+import datetime
+
 import pytz
+from dotenv import load_dotenv
 from pydantic_settings import BaseSettings
 
+load_dotenv()
 
 class DBConfig(BaseSettings):
     DB_HOST: str = ""
@@ -14,8 +18,14 @@ class DBConfig(BaseSettings):
         return f"postgresql+asyncpg://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
 
 
+class GigachatConfig(BaseSettings):
+    GIGACHAT_API_KEY: str = ""
+    GIGACHAT_SCOPE: str = "GIGACHAT_API_PERS"
+
+
 class Settings(BaseSettings):
-    moscow_tz = pytz.timezone("Europe/Moscow")
+    moscow_tz: datetime.tzinfo = pytz.timezone("Europe/Moscow")
+    today: datetime.date = datetime.datetime.now(moscow_tz).date()
     db_config: DBConfig = DBConfig()
     TELEGRAM_BOT_TOKEN: str = ""
     ADMIN_ID: int = 0
