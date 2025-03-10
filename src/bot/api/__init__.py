@@ -1,5 +1,7 @@
 from aiogram import F, Router, types
 from aiogram.fsm.context import FSMContext
+
+from bot.keyboards import goal_update_kb, goal_set_kb, user_kb
 from bot.states import AddMealStates, SetNutritionGoalStates
 from dependencies import container
 from usecases import UsersUseCase, DishRecognitionUseCase, RecommendationUseCase, StatisticsUseCase
@@ -7,6 +9,11 @@ from usecases.errors import UserNutritionNotSetError
 from usecases.schemas import GoalType
 
 router = Router()
+
+
+@router.message(F.text.lower() == "главное меню")
+async def add_dish(message: types.Message):
+    await message.answer("К главному меню", reply_markup=user_kb)
 
 
 @router.message(F.text.lower() == "добавить блюдо")
@@ -88,6 +95,36 @@ async def generate_user_dish_recommendation(message: types.Message):
         parse_mode="Markdown"
     )
 
+
+@router.message(F.text.lower() == "цель")
+async def handle_goal(message: types.Message):
+    user_id = message.from_user.id
+    uc: UsersUseCase = container.resolve(UsersUseCase)
+
+    try:
+        nutrition = await uc.get_nutrition_goal(user_id=user_id)
+        await message.answer(
+            f"📅 **Ваша дневная цель КБЖУ**:\n"
+            f"🥩 **Белки**: {nutrition.protein:.1f} г\n"
+            f"🧈 **Жиры**: {nutrition.fat:.1f} г\n"
+            f"🍞 **Углеводы**: {nutrition.carbohydrates:.1f} г\n"
+            f"🔥 **Калории**: {nutrition.calories:.1f} ккал\n",
+            parse_mode="Markdown",
+            reply_markup=goal_update_kb,
+        )
+    except UserNutritionNotSetError:
+        await message.answer(
+            "У вас ещё нет заданной цели. Задайте её сейчас, чтобы получать рекомендации.",
+            reply_markup=goal_set_kb,
+        )
+
+
+@router.message(F.text.lower() == "задать цель")
+async def set_nutrition_goal(message: types.Message, state: FSMContext):
+    await message.answer("Рост (см):")
+    await state.set_state(SetNutritionGoalStates.waiting_height)
+
+
 @router.message(F.text.lower() == "обновить цель")
 async def set_nutrition_goal(message: types.Message, state: FSMContext):
     await message.answer("Рост (см):")
@@ -119,23 +156,3 @@ async def process_goal(message: types.Message, state: FSMContext):
                                 weight=float(goal_data["weight"]))
     await message.answer(f"Цель обновлена!")
     await state.clear()
-
-
-@router.message(F.text.lower() == "текущая цель")
-async def set_nutrition_goal(message: types.Message):
-    user_id = message.from_user.id
-    uc: UsersUseCase = container.resolve(UsersUseCase)
-    try:
-        nutrition = await uc.get_nutrition_goal(user_id=user_id)
-    except UserNutritionNotSetError:
-        await message.answer("Вам необходимо задать **Цель** в панели Меню",
-                             parse_mode="Markdown")
-        return None
-    await message.answer(
-        f"📅 **Ваша дневная цель КБЖУ**:\n"
-        f"🥩 **Белки**: {nutrition.protein:.1f} г\n"
-        f"🧈 **Жиры**: {nutrition.fat:.1f} г\n"
-        f"🍞 **Углеводы**: {nutrition.carbohydrates:.1f} г\n"
-        f"🔥 **Калории**: {nutrition.calories:.1f} ккал\n",
-        parse_mode="Markdown",
-    )
