@@ -154,5 +154,5 @@ async def process_goal(message: types.Message, state: FSMContext):
                                 user_id=user_id,
                                 height=float(goal_data["height"]),
                                 weight=float(goal_data["weight"]))
-    await message.answer(f"Цель обновлена!")
+    await message.answer(f"Цель обновлена!", reply_markup=user_kb)
     await state.clear()
