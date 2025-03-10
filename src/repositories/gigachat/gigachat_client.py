@@ -1,6 +1,9 @@
 import json
+import logging
 import re
 import ssl
+import time
+from functools import wraps
 
 import httpx
 from typing import Self
@@ -9,6 +12,25 @@ from usecases.errors import NotFoundError
 from usecases.interfaces import AIClientInterface
 from config import GigachatConfig
 from usecases.schemas import NutritionData, DishRecommendation
+
+
+def retry(retry_num: int = 3, retry_sleep_sec: int = 1):
+    def decorator(func):
+        """decorator"""
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            """wrapper"""
+            for attempt in range(retry_num):
+                try:
+                    return func(*args, **kwargs)
+                except Exception:
+                    logging.error("Ошибка в ответе от AI client")
+                    time.sleep(retry_sleep_sec)
+                logging.error("Trying attempt %s of %s.", attempt + 1, retry_num)
+            logging.error("func %s retry failed", func)
+            raise Exception('Exceed max retry num: {} failed'.format(retry_num))
+        return wrapper
+    return decorator
 
 
 class GigachatClient(AIClientInterface):
@@ -76,6 +98,7 @@ class GigachatClient(AIClientInterface):
             return json.loads(match.group(1))
         raise NotFoundError("Not found json in AI client response")
 
+    @retry()
     async def recognize_meal_by_text(self, message: str) -> NutritionData:
         system_message = (
         """
@@ -95,6 +118,7 @@ class GigachatClient(AIClientInterface):
         response_parsed = await self._parse_json_response(response)
         return NutritionData(**response_parsed)
 
+    @retry()
     async def get_dish_recommendation(self, message: str) -> DishRecommendation:
         system_message = (
             """Тебе нужно предложить пользователю блюдо на основании следующих данных:  
@@ -123,6 +147,7 @@ class GigachatClient(AIClientInterface):
         response_parsed = await self._parse_json_response(response)
         return DishRecommendation(**response_parsed)
 
+    @retry()
     async def get_nutrition_recommendation(self, message: str) -> NutritionData:
         system_message = (
             """На основе веса, роста и цели пользователя рассчитай сбалансированную дневную норму КБЖУ.  
