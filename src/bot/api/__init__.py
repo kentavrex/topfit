@@ -6,7 +6,7 @@ from bot.states import AddMealStates, SetNutritionGoalStates
 from dependencies import container
 from usecases import UsersUseCase, DishRecognitionUseCase, RecommendationUseCase, StatisticsUseCase
 from usecases.errors import UserNutritionNotSetError
-from usecases.schemas import GoalType
+from usecases.schemas import GoalType, NutritionGoalSchema
 
 router = Router()
 
@@ -119,13 +119,12 @@ async def handle_goal(message: types.Message):
         )
 
 
-@router.message(F.text.lower() == "задать цель")
-async def set_nutrition_goal(message: types.Message, state: FSMContext):
-    await message.answer("Рост (см):")
-    await state.set_state(SetNutritionGoalStates.waiting_height)
-
-
 @router.message(F.text.lower() == "обновить цель")
+async def update_nutrition_goal(message: types.Message, state: FSMContext):
+    await set_nutrition_goal(message=message, state=state)
+
+
+@router.message(F.text.lower() == "задать цель")
 async def set_nutrition_goal(message: types.Message, state: FSMContext):
     await message.answer("Рост (см):")
     await state.set_state(SetNutritionGoalStates.waiting_height)
@@ -134,25 +133,40 @@ async def set_nutrition_goal(message: types.Message, state: FSMContext):
 @router.message(SetNutritionGoalStates.waiting_height, F.text)
 async def process_height(message: types.Message, state: FSMContext):
     await state.update_data(height=message.text)
-    await message.answer("Вес (кг)")
+    await message.answer("Вес (кг):")
     await state.set_state(SetNutritionGoalStates.waiting_weight)
 
 
 @router.message(SetNutritionGoalStates.waiting_weight, F.text)
 async def process_weight(message: types.Message, state: FSMContext):
     await state.update_data(weight=message.text)
-    await message.answer(f"Отправьте только номер вашей цели:\n{GoalType.get_goal_options()}")
+    await message.answer(f"Возраст:")
+    await state.set_state(SetNutritionGoalStates.waiting_age)
+
+
+@router.message(SetNutritionGoalStates.waiting_age, F.text)
+async def process_age(message: types.Message, state: FSMContext):
+    await state.update_data(age=message.text)
+    await message.answer(f"Выберите пол (м/ж):")
     await state.set_state(SetNutritionGoalStates.waiting_goal)
 
 
 @router.message(SetNutritionGoalStates.waiting_goal, F.text)
+async def process_gender(message: types.Message, state: FSMContext):
+    await state.update_data(gender=message.text)
+    await message.answer(f"Выберите номер вашей цели:\n{GoalType.get_goal_options()}")
+    await state.set_state(SetNutritionGoalStates.waiting_gender)
+
+@router.message(SetNutritionGoalStates.waiting_gender, F.text)
 async def process_goal(message: types.Message, state: FSMContext):
     user_id = message.from_user.id
     goal_data = await state.get_data()
     uc: UsersUseCase = container.resolve(UsersUseCase)
-    await uc.set_nutrition_goal(goal_number=int(message.text),
-                                user_id=user_id,
-                                height=float(goal_data["height"]),
-                                weight=float(goal_data["weight"]))
+    goal_data = NutritionGoalSchema(height=float(goal_data["height"]),
+                                    weight=float(goal_data["weight"]),
+                                    age=int(goal_data["age"]),
+                                    is_male=True if goal_data["gender"] == "м" else False,
+                                    nutrition_goal_type=GoalType.from_number(int(message.text.lower())))
+    await uc.set_nutrition_goal(user_id=user_id, goal_data=goal_data)
     await message.answer(f"Цель обновлена!", reply_markup=user_kb)
     await state.clear()

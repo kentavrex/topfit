@@ -19,6 +19,3 @@ class AIClientInterface(ABC):
 
     @abstractmethod
     async def get_dish_recommendation(self, message: str) -> DishRecommendation: ...
-
-    @abstractmethod
-    async def get_nutrition_recommendation(self, message: str) -> NutritionData: ...

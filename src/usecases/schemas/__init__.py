@@ -34,10 +34,13 @@ class UserSchema(CustomBaseModel):
 class NutritionGoalSchema(CustomBaseModel):
     height: float
     weight: float
+    age: int
+    is_male: bool
     nutrition_goal_type: GoalType
 
     def __str__(self):
-        return f"Height: {self.height}, Weight: {self.weight}, Goal: {self.nutrition_goal_type.value}"
+        return (f"Height: {self.height}, Weight: {self.weight}, Age: {self.age},"
+                f" IsMail: {self.is_male} Goal: {self.nutrition_goal_type.value}")
 
 
 class NutritionData(CustomBaseModel):

@@ -146,23 +146,3 @@ class GigachatClient(AIClientInterface):
         response = await self._send_request(system_message=system_message, user_message=message)
         response_parsed = await self._parse_json_response(response)
         return DishRecommendation(**response_parsed)
-
-    @retry()
-    async def get_nutrition_recommendation(self, message: str) -> NutritionData:
-        system_message = (
-            """На основе веса, роста и цели пользователя рассчитай сбалансированную дневную норму КБЖУ.  
-            Ориентиры:  
-            - Снижение веса: белки 1.6–2.2 г/кг, жиры 0.5–1 г/кг, углеводы 2–3 г/кг.  
-            - Поддержание веса: белки 1.2–2 г/кг, жиры 0.8–1.2 г/кг, углеводы 3–5 г/кг.  
-            - Набор массы: белки 1.8–2 г/кг, жиры 0.8–1.2 г/кг, углеводы 4–6 г/кг.   
-            Не превышай разумную суточную калорийность.  
-            Верни JSON-ответ.
-            Пример ответа:
-            ```json
-            {"protein": float, "fat": float, "carbohydrates": float, "calories": float}
-            ```
-            """
-        )
-        response = await self._send_request(system_message=system_message, user_message=message)
-        response_parsed = await self._parse_json_response(response)
-        return NutritionData(**response_parsed)
