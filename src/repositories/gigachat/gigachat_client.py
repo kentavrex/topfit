@@ -165,7 +165,7 @@ class GigachatClient(AIClientInterface):
                 "fat": 10.0,
                 "carbohydrates": 50.0,
                 "calories": 400.0,
-                "name": "Название блюда",
+                "name": "Ризотто с цыпленком",
                 "receipt": "Рецепт блюда"
                 "servings_count": 5
             }
