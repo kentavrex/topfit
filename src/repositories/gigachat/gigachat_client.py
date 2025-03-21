@@ -87,7 +87,7 @@ class GigachatClient(AIClientInterface):
             "Accept": "application/json",
             "Authorization": f"Bearer {self._access_token}",
         }
-        logging.info(f"system_message={system_message}")
+        logging.info(f"system_message={system_message}\n user_message={user_message}")
         payload = json.dumps({
             "model": "GigaChat",
             "messages": [
@@ -139,9 +139,15 @@ class GigachatClient(AIClientInterface):
     @retry()
     async def get_dish_recommendation(self, message: str, additional_message: str = '') -> DishRecommendation:
         system_message = (
-            """Предложи блюдо с учетом:  
-            1. Ограничений по КБЖУ (не превышает норму).  
-            2. Вкусовых предпочтений (история блюд с КБЖУ).  
+            """Тебе нужно предложить пользователю блюдо на основании следующих данных:
+            1. Блюдо не должно сильно превышать норму (белки, жиры, углеводы, калории).  
+            2. Список прошлых блюд пользователя с их КБЖУ — эта информация поможет понять вкусовые предпочтения 
+            пользователя.
+            Важно:
+            - Блюдо не обязательно должно быть из прошлых блюд пользователя.
+            - КБЖУ 1 порции блюда должно укладываться в дневную норму КБЖУ клиента - может быть меньше,
+             главное не больше.
+            - Рецепт может быть на несколько порций, в ответе КБЖУ возвращай для всех порций.
 
             Формат ответа: строго в формате JSON, содержащий:
             - "protein" (float) — белки во всех порциях
