@@ -14,22 +14,31 @@ from config import GigachatConfig
 from usecases.schemas import NutritionData, DishRecommendation
 
 
-def retry(retry_num: int = 3, retry_sleep_sec: int = 1):
+def retry(retry_num: int = 3, retry_sleep_sec: int = 2):
     def decorator(func):
-        """decorator"""
         @wraps(func)
-        def wrapper(*args, **kwargs):
-            """wrapper"""
+        async def wrapper(*args, **kwargs):
             for attempt in range(retry_num):
                 try:
-                    return func(*args, **kwargs)
-                except Exception:
-                    logging.error("Ошибка в ответе от AI client")
+                    if attempt != 0:
+                        kwargs['additional_message'] = ("Ответ должен быть в формате JSON и в формате ответа из примера. "
+                                                        "Пожалуйста, отправь данные снова, но строго в формате JSON.")
+                    return await func(*args, **kwargs)
+                except json.JSONDecodeError as e:
+                    logging.error(f"Ошибка в ответе от AI client (JSON Decode Error): {e}")
+                except Exception as e:
+                    logging.error(f"Ошибка в ответе от AI client: {e}")
+
+                if attempt < retry_num - 1:
+                    logging.error(f"Попытка {attempt + 1} не удалась.")
                     time.sleep(retry_sleep_sec)
-                logging.error("Trying attempt %s of %s.", attempt + 1, retry_num)
-            logging.error("func %s retry failed", func)
-            raise Exception('Exceed max retry num: {} failed'.format(retry_num))
+                else:
+                    logging.error(f"Не удалось выполнить {func.__name__} после {retry_num} попыток")
+                    raise Exception(f'Превышено максимальное количество попыток для {func.__name__}')
+            return None
+
         return wrapper
+
     return decorator
 
 
@@ -66,17 +75,19 @@ class GigachatClient(AIClientInterface):
 
         self._access_token = response.json()["access_token"]
 
-    async def _send_request(self, system_message: str, user_message: str) -> str:
+    async def _send_request(self, system_message: str, user_message: str, additional_message: str = '') -> str:
         """Отправляет запрос в GigaChat API для генерации ответа."""
         if not self._access_token:
             await self._update_access_token()
 
+        system_message = f"{additional_message}\n {system_message}"
         url = "https://gigachat.devices.sberbank.ru/api/v1/chat/completions"
         headers = {
             "Content-Type": "application/json",
             "Accept": "application/json",
             "Authorization": f"Bearer {self._access_token}",
         }
+        logging.info(f"system_message={system_message}\n user_message={user_message}")
         payload = json.dumps({
             "model": "GigaChat",
             "messages": [
@@ -93,13 +104,18 @@ class GigachatClient(AIClientInterface):
 
     @staticmethod
     async def _parse_json_response(message_response: str) -> dict:
+        logging.debug(f"Received message response: {message_response}")
         match = re.search(r'```json\s*\n(.*?)\n\s*```', message_response, re.DOTALL)
         if match:
-            return json.loads(match.group(1))
+            try:
+                return json.loads(match.group(1))
+            except json.JSONDecodeError as e:
+                logging.error(f"JSON decoding error: {e}")
+                raise
         raise NotFoundError("Not found json in AI client response")
 
     @retry()
-    async def recognize_meal_by_text(self, message: str) -> NutritionData:
+    async def recognize_meal_by_text(self, message: str, additional_message: str = '') -> NutritionData:
         system_message = (
         """
         Посчитай КБЖУ блюда.  
@@ -114,35 +130,50 @@ class GigachatClient(AIClientInterface):
         ```
         """
         )
-        response = await self._send_request(system_message=system_message, user_message=message)
+        response = await self._send_request(system_message=system_message,
+                                            user_message=message,
+                                            additional_message=additional_message)
         response_parsed = await self._parse_json_response(response)
         return NutritionData(**response_parsed)
 
     @retry()
-    async def get_dish_recommendation(self, message: str) -> DishRecommendation:
+    async def get_dish_recommendation(self, message: str, additional_message: str = '') -> DishRecommendation:
         system_message = (
-            """Тебе нужно предложить пользователю блюдо на основании следующих данных:  
-            1. Примерное (не точное) количество КБЖУ, к которому должно соответствовать блюдо.  
-            2. Список прошлых блюд пользователя с их КБЖУ — эта информация поможет понять вкусовые 
-            предпочтения пользователя.
-            Важно:  
-            - Блюдо не обязательно должно быть из прошлых блюд пользователя.  
-            - Основная цель — чтобы предложенное блюдо примерно соответствовало заданному КБЖУ.  
-            - В ответе должен быть указан сам рецепт (ингредиенты с граммировками).  
-            Формат ответа: строго в формате JSON, содержащий:  
-            - "protein" (float) — белки  
-            - "fat" (float) — жиры  
-            - "carbohydrates" (float) — углеводы  
-            - "calories" (float) — калории  
-            - "name" (str) — название блюда  
-            - "receipt" (str) — рецепт приготовления  
+            """Тебе нужно предложить пользователю блюдо на основании следующих данных:
+            1. Блюдо не должно сильно превышать норму (белки, жиры, углеводы, калории).  
+            2. Список прошлых блюд пользователя с их КБЖУ — эта информация поможет понять вкусовые предпочтения 
+            пользователя.
+            Важно:
+            - Блюдо не обязательно должно быть из прошлых блюд пользователя.
+            - КБЖУ 1 порции блюда должно укладываться в дневную норму КБЖУ клиента - может быть меньше,
+             главное не больше.
+            - Рецепт  может быть на несколько порций, в ответе КБЖУ возвращай для всех порций.
+
+            Формат ответа: строго в формате JSON, содержащий:
+            - "protein" (float) — белки
+            - "fat" (float) — жиры
+            - "carbohydrates" (float) — углеводы
+            - "calories" (float) — калории
+            - "name" (str) — название блюда
+            - "receipt" (str) — рецепт (включая ингредиенты с граммировками и приготовлением)
+            - "servings_count" (int) - кол-во порций, которые получаются в рецепте
+
             Пример ответа:
             ```json
-            {"protein": 25.0, "fat": 10.0, "carbohydrates": 50.0, "calories": 400.0,
-             "name": "Название блюда", "receipt": "Рецепт блюда}
+            {
+                "protein": 25.0,
+                "fat": 10.0,
+                "carbohydrates": 50.0,
+                "calories": 400.0,
+                "name": "Название блюда",
+                "receipt": "Рецепт блюда"
+                "servings_count": 5
+            }
             ```
             """
         )
-        response = await self._send_request(system_message=system_message, user_message=message)
+        response = await self._send_request(system_message=system_message,
+                                            user_message=message,
+                                            additional_message=additional_message)
         response_parsed = await self._parse_json_response(response)
         return DishRecommendation(**response_parsed)

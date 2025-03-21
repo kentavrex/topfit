@@ -64,6 +64,7 @@ class DishSchema(DishData):
 
 class DishRecommendation(DishData):
     receipt: str
+    servings_count: int
 
 
 class CountedStatisticsSchema(CustomBaseModel):
