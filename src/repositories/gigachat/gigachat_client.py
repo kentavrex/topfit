@@ -210,6 +210,7 @@ class GigachatClient(AIClientInterface):
         response_parsed = await self._parse_json_response(response)
         return DishRecommendation(**response_parsed)
 
+    @retry()
     async def recognize_meal_by_image(
             self, dish_bytes: BinaryIO, mime_type: str, additional_message: str = ''
     ) -> DishData:
@@ -233,9 +234,14 @@ class GigachatClient(AIClientInterface):
         ```
         """
         )
+        find_meal_text = "Что из еды представлено, просто перечисли."
+        photo_recognize_text = await self._send_request(system_message=find_meal_text,
+                                                        user_message=find_meal_text,
+                                                        attachments=[file_id],
+                                                        additional_message=additional_message)
         response = await self._send_request(system_message=system_message,
-                                            user_message="Найди все, что связано с едой на фото",
-                                            attachments=[file_id],
-                                            additional_message=additional_message)
+                                                        user_message=photo_recognize_text,
+                                                        attachments=[file_id],
+                                                        additional_message=additional_message)
         response_parsed = await self._parse_json_response(response)
         return DishData(**response_parsed)
