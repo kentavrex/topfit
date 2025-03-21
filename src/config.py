@@ -25,7 +25,6 @@ class GigachatConfig(BaseSettings):
 
 class Settings(BaseSettings):
     moscow_tz: datetime.tzinfo = pytz.timezone("Europe/Moscow")
-    today: datetime.date = datetime.datetime.now(moscow_tz).date()
     db_config: DBConfig = DBConfig()
     TELEGRAM_BOT_TOKEN: str = ""
     ADMIN_ID: int = 0

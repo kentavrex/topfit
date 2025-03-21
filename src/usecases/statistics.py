@@ -11,8 +11,8 @@ class StatisticsUseCase:
 
     async def get_statistics(self,
                              user_id: int,
-                             date_from: datetime.date = settings.today,
-                             date_to: datetime.date = settings.today) -> CountedStatisticsSchema:
+                             date_from: datetime.date = datetime.now(settings.moscow_tz).date(),
+                             date_to: datetime.date = datetime.now(settings.moscow_tz).date()) -> CountedStatisticsSchema:
         async with self._db as db:
             dishes_history: [DishSchema] = await db.get_user_dishes_history_by_period(user_id=user_id,
                                                                                       date_from=date_from,

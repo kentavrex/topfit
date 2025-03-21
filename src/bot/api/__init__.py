@@ -90,7 +90,7 @@ async def generate_user_dish_recommendation(message: types.Message):
         parse_mode="Markdown"
     )
     await message.answer(
-        f"📝 **Рецепт**: {recommendation.receipt}\n\n"
+        f"📝 **Рецепт**:\n{recommendation.receipt}\n\n"
         "Приятного аппетита! 😋",
         parse_mode="Markdown"
     )
