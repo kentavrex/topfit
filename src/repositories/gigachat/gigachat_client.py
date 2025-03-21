@@ -241,7 +241,6 @@ class GigachatClient(AIClientInterface):
                                                         additional_message=additional_message)
         response = await self._send_request(system_message=system_message,
                                                         user_message=photo_recognize_text,
-                                                        attachments=[file_id],
                                                         additional_message=additional_message)
         response_parsed = await self._parse_json_response(response)
         return DishData(**response_parsed)
