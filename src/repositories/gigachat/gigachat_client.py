@@ -6,12 +6,12 @@ import time
 from functools import wraps
 
 import httpx
-from typing import Self
+from typing import Self, BinaryIO
 
 from usecases.errors import NotFoundError
 from usecases.interfaces import AIClientInterface
 from config import GigachatConfig
-from usecases.schemas import NutritionData, DishRecommendation
+from usecases.schemas import NutritionData, DishRecommendation, DishData
 
 
 def retry(retry_num: int = 3, retry_sleep_sec: int = 2):
@@ -75,7 +75,11 @@ class GigachatClient(AIClientInterface):
 
         self._access_token = response.json()["access_token"]
 
-    async def _send_request(self, system_message: str, user_message: str, additional_message: str = '') -> str:
+    async def _send_request(self,
+                            system_message: str,
+                            user_message: str | None = None,
+                            attachments: list[str] | None = None,
+                            additional_message: str = '') -> str:
         """Отправляет запрос в GigaChat API для генерации ответа."""
         if not self._access_token:
             await self._update_access_token()
@@ -88,19 +92,46 @@ class GigachatClient(AIClientInterface):
             "Authorization": f"Bearer {self._access_token}",
         }
         logging.info(f"system_message={system_message}\n user_message={user_message}")
-        payload = json.dumps({
+        payload = {
             "model": "GigaChat",
-            "messages": [
-                {"role": "system", "content": system_message},
-                {"role": "user", "content": user_message},
-            ],
+            "messages": [{"role": "system", "content": system_message}],
             "stream": False,
-            "update_interval": 0
-        })
+            "update_interval": 0,
+        }
+        if user_message:
+            payload["messages"] += {"role": "user", "content": user_message}
+        if attachments:
+            payload["messages"] += {"role": "user", "attachments": attachments}
+            payload["model"] = "GigaChat-Pro"
+        else:
+            payload["model"] = "GigaChat"
+
         async with httpx.AsyncClient(verify=self._ssl_context) as client:
-            response = await client.post(url, headers=headers, content=payload)
+            response = await client.post(url, headers=headers, content=json.dumps(payload))
         response.raise_for_status()
         return response.json()["choices"][0]["message"]["content"]
+
+    async def _upload_gigachat_file(self, file_bytes: BinaryIO, mime_type: str) -> str | None:
+        url = "https://gigachat.devices.sberbank.ru/api/v1/files"
+        headers = {
+            "Authorization": f"Bearer {self._access_token}",
+        }
+        files = {
+            "file": ("file.png", file_bytes, mime_type)
+        }
+        data = {"purpose": "general"}
+        try:
+            async with httpx.AsyncClient(verify=self._ssl_context) as client:
+                response = await client.post(url, headers=headers, files=files, data=data)
+
+            if response.status_code == 200:
+                return response.json()['id']
+            else:
+                print(f"Ошибка: {response.status_code}, {response.text}")
+                return None
+        except httpx.RequestError as e:
+            print(f"Ошибка при отправке запроса: {e}")
+            return None
 
     @staticmethod
     async def _parse_json_response(message_response: str) -> dict:
@@ -115,18 +146,19 @@ class GigachatClient(AIClientInterface):
         raise NotFoundError("Not found json in AI client response")
 
     @retry()
-    async def recognize_meal_by_text(self, message: str, additional_message: str = '') -> NutritionData:
+    async def recognize_meal_by_text(self, message: str, additional_message: str = '') -> DishData:
         system_message = (
         """
         Посчитай КБЖУ блюда.  
-        Верни ответ строго в формате JSON, содержащий следующие поля:  
+        Верни ответ строго в формате JSON, содержащий следующие поля:
+        - "name" (str) - название 
         - "calories" (float) — калории  
         - "protein" (float) — белки  
         - "fat" (float) — жиры  
         - "carbohydrates" (float) — углеводы  
         Формат ответа:
         ```json
-        {"protein": 12.3, "fat": 1200.2, "carbohydrates": 21.2, "calories": 23.1}
+        {"name": "Ризотто с курицей, "protein": 25.3, "fat": 10.2, "carbohydrates": 150.2, "calories": 400.1}
         ```
         """
         )
@@ -134,7 +166,7 @@ class GigachatClient(AIClientInterface):
                                             user_message=message,
                                             additional_message=additional_message)
         response_parsed = await self._parse_json_response(response)
-        return NutritionData(**response_parsed)
+        return DishData(**response_parsed)
 
     @retry()
     async def get_dish_recommendation(self, message: str, additional_message: str = '') -> DishRecommendation:
@@ -177,3 +209,33 @@ class GigachatClient(AIClientInterface):
                                             additional_message=additional_message)
         response_parsed = await self._parse_json_response(response)
         return DishRecommendation(**response_parsed)
+
+    async def recognize_meal_by_image(
+            self, dish_bytes: BinaryIO, mime_type: str, additional_message: str = ''
+    ) -> DishData:
+        file_id = await self._upload_gigachat_file(file_bytes=dish_bytes, mime_type=mime_type)
+        if not file_id:
+            logging.error("Ошибка загрузки файла")
+            raise
+
+        system_message = (
+        """
+        Посчитай КБЖУ блюда из приложенного файла.  
+        Верни ответ строго в формате JSON, содержащий следующие поля:
+        - "name" (str) - название 
+        - "calories" (float) — калории  
+        - "protein" (float) — белки  
+        - "fat" (float) — жиры  
+        - "carbohydrates" (float) — углеводы  
+        Формат ответа:
+        ```json
+        {"name": "Ризотто с курицей, "protein": 25.3, "fat": 10.2, "carbohydrates": 150.2, "calories": 400.1}
+        ```
+        """
+        )
+        response = await self._send_request(system_message=system_message,
+                                            user_message="Найди все, что связано с едой на фото",
+                                            attachments=[file_id],
+                                            additional_message=additional_message)
+        response_parsed = await self._parse_json_response(response)
+        return DishData(**response_parsed)

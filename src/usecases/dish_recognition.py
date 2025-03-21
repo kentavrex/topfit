@@ -1,4 +1,4 @@
-import json
+from typing import BinaryIO
 
 from usecases.interfaces import DBRepositoryInterface, AIClientInterface
 from usecases.schemas import DishData, DishSchema
@@ -16,12 +16,14 @@ class DishRecognitionUseCase:
     async def recognize_dish_from_text(self, dish_name: str) -> DishSchema:
         async with self._ai_client as ai_client:
             dish_nutrition_data = await ai_client.recognize_meal_by_text(message=dish_name)
-            return await self._save_dish_to_db(dish_data=DishData(name=dish_name, **dish_nutrition_data.model_dump()))
+            return await self._save_dish_to_db(dish_data=dish_nutrition_data)
 
-    async def recognize_dish_from_image(self, image_url: str) -> DishSchema:
+    async def recognize_dish_from_image(self, dish_bytes: BinaryIO, mime_type: str) -> DishSchema:
         # Логика распознавания блюда по изображению через нейросеть
-        pass
+        async with self._ai_client as ai_client:
+            dish_nutrition_data = await ai_client.recognize_meal_by_image(dish_bytes=dish_bytes, mime_type=mime_type)
+            return await self._save_dish_to_db(dish_data=dish_nutrition_data)
 
-    async def recognize_dish_from_audio(self, audio_file: str) -> DishSchema:
+    async def recognize_dish_from_audio(self, dish_bytes: BinaryIO) -> DishSchema:
         # Логика распознавания блюда по аудио
         pass
