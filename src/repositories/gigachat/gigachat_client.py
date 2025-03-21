@@ -87,7 +87,7 @@ class GigachatClient(AIClientInterface):
             "Accept": "application/json",
             "Authorization": f"Bearer {self._access_token}",
         }
-        logging.info(f"system_message={system_message}\n user_message={user_message}")
+        logging.info(f"system_message={system_message}")
         payload = json.dumps({
             "model": "GigaChat",
             "messages": [
