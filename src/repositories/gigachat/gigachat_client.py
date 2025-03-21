@@ -221,7 +221,7 @@ class GigachatClient(AIClientInterface):
 
         system_message = (
         """
-        Посчитай КБЖУ блюда из приложенного файла.  
+        Найди в тексте ВСЮ ЕДУ и посчитай КБЖУ.  
         Верни ответ строго в формате JSON, содержащий следующие поля:
         - "name" (str) - название 
         - "calories" (float) — калории  
@@ -239,8 +239,9 @@ class GigachatClient(AIClientInterface):
                                                         user_message=find_meal_text,
                                                         attachments=[file_id],
                                                         additional_message=additional_message)
+        logging.info(f"Meal recognized: {photo_recognize_text}")
         response = await self._send_request(system_message=system_message,
-                                                        user_message=photo_recognize_text,
-                                                        additional_message=additional_message)
+                                            user_message=photo_recognize_text,
+                                            additional_message=additional_message)
         response_parsed = await self._parse_json_response(response)
         return DishData(**response_parsed)
