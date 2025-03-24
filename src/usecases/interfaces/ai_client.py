@@ -22,6 +22,9 @@ class AIClientInterface(ABC):
     async def recognize_meal_by_text(self, message: str, additional_message: str = '') -> DishData: ...
 
     @abstractmethod
+    async def recognize_meal_by_text_from_audio(self, message: str, additional_message: str = '') -> DishData: ...
+
+    @abstractmethod
     async def recognize_meal_by_image(
             self, dish_bytes: BinaryIO, mime_type: str, additional_message: str = ''
     ) -> DishData: ...

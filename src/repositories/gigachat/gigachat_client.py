@@ -11,7 +11,7 @@ from typing import Self, BinaryIO
 from usecases.errors import NotFoundError
 from usecases.interfaces import AIClientInterface
 from config import GigachatConfig
-from usecases.schemas import NutritionData, DishRecommendation, DishData
+from usecases.schemas import DishRecommendation, DishData
 
 
 def retry(retry_num: int = 3, retry_sleep_sec: int = 2):
@@ -91,6 +91,7 @@ class GigachatClient(AIClientInterface):
             "Accept": "application/json",
             "Authorization": f"Bearer {self._access_token}",
         }
+
         logging.info(f"system_message={system_message}\n user_message={user_message}")
         payload = {
             "model": "GigaChat",
@@ -98,26 +99,29 @@ class GigachatClient(AIClientInterface):
             "stream": False,
             "update_interval": 0,
         }
+
         if user_message:
-            payload["messages"] += {"role": "user", "content": user_message}
+            payload["messages"].append({"role": "user", "content": user_message})
+
         if attachments:
-            payload["messages"] += {"role": "user", "attachments": attachments}
+            payload["messages"].append({"role": "user", "attachments": attachments})
             payload["model"] = "GigaChat-Pro"
         else:
             payload["model"] = "GigaChat"
 
+        print(f"payload={payload}")
         async with httpx.AsyncClient(verify=self._ssl_context) as client:
             response = await client.post(url, headers=headers, content=json.dumps(payload))
         response.raise_for_status()
         return response.json()["choices"][0]["message"]["content"]
 
-    async def _upload_gigachat_file(self, file_bytes: BinaryIO, mime_type: str) -> str | None:
+    async def _upload_gigachat_file(self, file_bytes: bytes, mime_type: str) -> str | None:
         url = "https://gigachat.devices.sberbank.ru/api/v1/files"
         headers = {
             "Authorization": f"Bearer {self._access_token}",
         }
         files = {
-            "file": ("file.png", file_bytes, mime_type)
+            "file": ("file_name", file_bytes, mime_type)
         }
         data = {"purpose": "general"}
         try:
@@ -212,7 +216,7 @@ class GigachatClient(AIClientInterface):
 
     @retry()
     async def recognize_meal_by_image(
-            self, dish_bytes: BinaryIO, mime_type: str, additional_message: str = ''
+            self, dish_bytes: bytes, mime_type: str, additional_message: str = ''
     ) -> DishData:
         file_id = await self._upload_gigachat_file(file_bytes=dish_bytes, mime_type=mime_type)
         if not file_id:
@@ -242,6 +246,35 @@ class GigachatClient(AIClientInterface):
         logging.info(f"Meal recognized: {photo_recognize_text}")
         response = await self._send_request(system_message=system_message,
                                             user_message=photo_recognize_text,
+                                            additional_message=additional_message)
+        response_parsed = await self._parse_json_response(response)
+        return DishData(**response_parsed)
+
+    @retry()
+    async def recognize_meal_by_text_from_audio(self, message: str, additional_message: str = '') -> DishData:
+        system_message = (
+        """
+        Найди в тексте ВСЮ ЕДУ и посчитай КБЖУ.  
+        Верни ответ строго в формате JSON, содержащий следующие поля:
+        - "name" (str) - название 
+        - "calories" (float) — калории  
+        - "protein" (float) — белки  
+        - "fat" (float) — жиры  
+        - "carbohydrates" (float) — углеводы  
+        Формат ответа:
+        ```json
+        {"name": "Ризотто с курицей, "protein": 25.3, "fat": 10.2, "carbohydrates": 150.2, "calories": 400.1}
+        ```
+        """
+        )
+        find_meal_text = "Что из еды представлено, просто перечисли."
+        logging.info(f"Audio text: {message}")
+        meal_recognize_text = await self._send_request(system_message=find_meal_text,
+                                                       user_message=message,
+                                                       additional_message=additional_message)
+        logging.info(f"Meal recognized: {meal_recognize_text}")
+        response = await self._send_request(system_message=system_message,
+                                            user_message=meal_recognize_text,
                                             additional_message=additional_message)
         response_parsed = await self._parse_json_response(response)
         return DishData(**response_parsed)

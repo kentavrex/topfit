@@ -1,3 +1,5 @@
+import asyncio
+import logging
 from io import BytesIO
 
 import magic
@@ -8,7 +10,7 @@ from bot.keyboards import goal_update_kb, goal_set_kb, user_kb
 from bot.states import AddMealStates, SetNutritionGoalStates
 from dependencies import container
 from usecases import UsersUseCase, DishRecognitionUseCase, RecommendationUseCase, StatisticsUseCase
-from usecases.errors import UserNutritionNotSetError
+from usecases.errors import UserNutritionNotSetError, AudioToTextError
 from usecases.schemas import GoalType, NutritionGoalSchema
 
 router = Router()
@@ -21,44 +23,73 @@ async def add_dish(message: types.Message):
 
 @router.message(F.text.lower() == "добавить блюдо")
 async def add_dish(message: types.Message, state: FSMContext):
-    await message.answer("Отправьте текст, голосовое сообщение или фото блюда")
+    await message.answer("Отправьте текст или фото блюда (+? голосовое сообщение)")
     await state.set_state(AddMealStates.waiting_dish_obj)
 
 
 @router.message(AddMealStates.waiting_dish_obj, F.text)
 async def process_dish_text(message: types.Message, state: FSMContext):
     user_id = message.from_user.id
-    uc: DishRecognitionUseCase = container.resolve(DishRecognitionUseCase)
-    dish_data = await uc.recognize_dish_from_text(dish_name=message.text)
+    statistics_uc: StatisticsUseCase = container.resolve(StatisticsUseCase)
+    dish_recognition_uc: DishRecognitionUseCase = container.resolve(DishRecognitionUseCase)
+    dish_data = await dish_recognition_uc.recognize_dish_from_text(dish_name=message.text)
     await send_dish_info(message, dish_data)
-    await update_statistics(user_id, dish_data.id)
+    await statistics_uc.update_statistics(user_id=user_id, dish_id=dish_data.id)
     await state.clear()
 
 
-@router.message(AddMealStates.waiting_dish_obj, F.voice | F.photo)
-async def process_dish_media(message: types.Message, state: FSMContext):
+@router.message(AddMealStates.waiting_dish_obj, F.photo)
+async def process_dish_image(message: types.Message, state: FSMContext):
+    statistics_uc: StatisticsUseCase = container.resolve(StatisticsUseCase)
+    dish_recognition_uc: DishRecognitionUseCase = container.resolve(DishRecognitionUseCase)
+
+
+    processing_message = await message.answer("⏳Идет подсчет калорий..")
     user_id = message.from_user.id
     bot = message.bot
 
-    if message.voice:
-        # file = await bot.get_file(message.voice.file_id)
-        # todo
-        ...
-    elif message.photo:
-        file = await bot.get_file(message.photo[-1].file_id)  # Берем фото наибольшего размера
-        file_bytes = await bot.download_file(file.file_path)
-    else:
-        await message.answer("Не удалось обработать файл. Попробуйте снова.")
-        return
+    file = await bot.get_file(message.photo[-1].file_id)
+    file_bytes = await bot.download_file(file.file_path)
     file_bytes = file_bytes.read() if isinstance(file_bytes, BytesIO) else file_bytes
 
-    uc: DishRecognitionUseCase = container.resolve(DishRecognitionUseCase)
     mime = magic.Magic(mime=True)
     mime_type = mime.from_buffer(file_bytes)
-    dish_data = await uc.recognize_dish_from_image(dish_bytes=file_bytes,
-                                                   mime_type=mime_type)
+    logging.info(f"mime_type={mime_type}")
+    dish_data = await dish_recognition_uc.recognize_dish_from_image(dish_bytes=file_bytes,
+                                                                    mime_type=mime_type)
     await send_dish_info(message, dish_data)
-    await update_statistics(user_id, dish_data.id)
+    await processing_message.edit_text("✅ Подсчет завершен!")
+    await asyncio.sleep(3)
+    await bot.delete_message(chat_id=message.chat.id, message_id=processing_message.message_id)
+    await statistics_uc.update_statistics(user_id=user_id, dish_id=dish_data.id)
+    await state.clear()
+
+
+@router.message(AddMealStates.waiting_dish_obj, F.voice)
+async def process_dish_audio(message: types.Message, state: FSMContext):
+    statistics_uc: StatisticsUseCase = container.resolve(StatisticsUseCase)
+    dish_recognition_uc: DishRecognitionUseCase = container.resolve(DishRecognitionUseCase)
+
+    processing_message = await message.answer("⏳Идет подсчет калорий..")
+    user_id = message.from_user.id
+    bot = message.bot
+
+    file = await bot.get_file(message.voice.file_id)
+    file_bytes_io = await bot.download_file(file.file_path)
+    file_bytes = file_bytes_io.read()  # Приводим BytesIO к bytes
+
+    try:
+        dish_data = await dish_recognition_uc.recognize_dish_from_audio(file_bytes=file_bytes)
+    except AudioToTextError:
+        await processing_message.edit_text("❌ Не удалось распознать аудио.")
+        await asyncio.sleep(2)
+        await bot.delete_message(chat_id=message.chat.id, message_id=processing_message.message_id)
+        return
+    await send_dish_info(message, dish_data)
+    await processing_message.edit_text("✅ Подсчет завершен!")
+    await asyncio.sleep(3)
+    await bot.delete_message(chat_id=message.chat.id, message_id=processing_message.message_id)
+    await statistics_uc.update_statistics(user_id=user_id, dish_id=dish_data.id)
     await state.clear()
 
 
@@ -71,34 +102,6 @@ async def send_dish_info(message: types.Message, dish_data):
         f"🔥 *Калории:* {dish_data.calories:.1f} ккал\n",
         parse_mode="Markdown",
     )
-    # TODO: В будущем добавить возможность корректировки данных
-
-
-async def update_statistics(user_id, dish_id):
-    uc: StatisticsUseCase = container.resolve(StatisticsUseCase)
-    await uc.update_statistics(user_id=user_id, dish_id=dish_id)
-
-
-# @router.message(AddMealStates.waiting_dish_obj, F.text)
-# async def process_dish_obj(message: types.Message, state: FSMContext):
-#     user_id = message.from_user.id
-#     uc: DishRecognitionUseCase = container.resolve(DishRecognitionUseCase)
-#     dish_data = await uc.recognize_dish_from_text(dish_name=message.text)
-#     await message.answer(
-#         f"🍽 *Блюдо:* {dish_data.name}\n"
-#         f"🥩 *Белки:* {dish_data.protein:.1f} г\n"
-#         f"🧈 *Жиры:* {dish_data.fat:.1f} г\n"
-#         f"🍞 *Углеводы:* {dish_data.carbohydrates:.1f} г"
-#         f"🔥 *Калории:* {dish_data.calories:.1f} ккал\n",
-#         parse_mode="Markdown",
-#     )
-#     # TODO: В будущем добавить возможность корректировки данных
-#
-#     uc: StatisticsUseCase = container.resolve(StatisticsUseCase)
-#     await uc.update_statistics(user_id=user_id, dish_id=dish_data.id)
-#     await message.answer(f"Статистика обновлена!")
-#
-#     await state.clear()
 
 
 @router.message(F.text.lower() == "статистика")
