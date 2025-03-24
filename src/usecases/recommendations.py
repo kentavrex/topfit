@@ -31,9 +31,11 @@ class RecommendationUseCase:
             carbohydrates=user_nutrition_goal.carbohydrates - sum(stat.carbohydrates for stat in dishes_history),
             calories=user_nutrition_goal.calories - sum(stat.calories for stat in dishes_history),
         )
-
+        if user_dishes_history:
+            return (f"Примерный (не точный) желаемый кбжу: {dish_nutrition_goal_text}. "
+                    f"История прошлых блюд: {", ".join(user_dishes_history)}")
         return (f"Примерный (не точный) желаемый кбжу: {dish_nutrition_goal_text}. "
-                f"История прошлых блюд: {", ".join(user_dishes_history)}")
+                f"Истории прошлых блюд нет, просто порекомендуй что-нибудь вкусное.")
 
     async def generate_recommendation(self, user_id: int) -> DishRecommendation:
         dish_recommendation_text = await self._get_dish_recommendation_message_text(user_id=user_id)
