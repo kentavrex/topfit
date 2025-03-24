@@ -48,6 +48,8 @@ async def process_dish_image(message: types.Message, state: FSMContext):
     statistics_uc: StatisticsUseCase = container.resolve(StatisticsUseCase)
     dish_recognition_uc: DishRecognitionUseCase = container.resolve(DishRecognitionUseCase)
 
+    await message.answer("Загрузка изображений временно не доступна.")
+    await state.clear()
 
     processing_message = await message.answer("⏳Идет подсчет калорий..")
     user_id = message.from_user.id

@@ -105,7 +105,7 @@ class GigachatClient(AIClientInterface):
 
         if attachments:
             payload["messages"].append({"role": "user", "attachments": attachments})
-            payload["model"] = "GigaChat-Pro"
+            payload["model"] = "GigaChat-Max"
         else:
             payload["model"] = "GigaChat"
 
