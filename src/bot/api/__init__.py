@@ -23,7 +23,7 @@ async def add_dish(message: types.Message):
 
 @router.message(F.text.lower() == "добавить блюдо")
 async def add_dish(message: types.Message, state: FSMContext):
-    await message.answer("Отправьте текст или фото блюда (+? голосовое сообщение)")
+    await message.answer("Отправьте текст, голосовое сообщение или фото блюда!")
     await state.set_state(AddMealStates.waiting_dish_obj)
 
 
