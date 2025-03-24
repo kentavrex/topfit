@@ -140,7 +140,7 @@ async def get_daily_statistics(message: types.Message):
 
 @router.message(F.text.lower() == "ai рекомендация")
 async def generate_user_dish_recommendation(message: types.Message):
-    await message.answer(
+    processing_message = await message.answer(
         f"🍽 **Рекомендуемое блюдо**\n"
         f"Мы учитываем вашу дневную цель и статистику по КБЖУ, а также предпочтения, основанные на истории ваших блюд, "
         "чтобы предложить вам блюдо, которое вам точно понравится и будет вписываться в дневную норму.",
@@ -151,6 +151,7 @@ async def generate_user_dish_recommendation(message: types.Message):
     try:
         recommendation = await uc.generate_recommendation(user_id=user_id)
     except UserNutritionNotSetError:
+        await message.bot.delete_message(chat_id=message.chat.id, message_id=processing_message.message_id)
         await message.answer(
         "Персональная рекомендация блюда AI рассчитывается "
              "на основе вашей цели по КБЖУ.\n"
