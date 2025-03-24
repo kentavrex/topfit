@@ -85,6 +85,7 @@ async def process_dish_audio(message: types.Message, state: FSMContext):
         await asyncio.sleep(2)
         await bot.delete_message(chat_id=message.chat.id, message_id=processing_message.message_id)
         return
+
     await send_dish_info(message, dish_data)
     await processing_message.edit_text("✅ Подсчет завершен!")
     await asyncio.sleep(3)
