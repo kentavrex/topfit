@@ -153,8 +153,7 @@ async def generate_user_dish_recommendation(message: types.Message):
     except UserNutritionNotSetError:
         await message.answer(
         "Персональная рекомендация блюда AI рассчитывается "
-             "на основе ваших добавленных ранее блюд, а также на основе "
-             "вашей дневной цели и статистики по КБЖУ.\n"
+             "на основе вашей цели по КБЖУ.\n"
              "Вам необходимо задать **Цель** в панели Меню",
              parse_mode="Markdown"
         )
