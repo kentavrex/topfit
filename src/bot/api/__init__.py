@@ -38,7 +38,7 @@ async def process_dish_text(message: types.Message, state: FSMContext):
         await statistics_uc.update_statistics(user_id=user_id, dish_id=dish_data.id)
     except Exception as e:
         logging.error(f"Ошибка={e}")
-        await message.answer("❌ Не удалось распознать фото.")
+        await message.answer("❌ Не удалось рассчитать калории. Попробуйте еще раз.")
     finally:
         await state.clear()
 
@@ -73,7 +73,7 @@ async def process_dish_image(message: types.Message, state: FSMContext):
         await statistics_uc.update_statistics(user_id=user_id, dish_id=dish_data.id)
     except Exception as e:
         logging.error(f"Ошибка={e}")
-        await processing_message.edit_text("❌ Не удалось распознать фото.")
+        await processing_message.edit_text("❌ Не удалось распознать фото. Попробуйте еще раз.")
     finally:
         await state.clear()
 
@@ -95,7 +95,7 @@ async def process_dish_audio(message: types.Message, state: FSMContext):
         try:
             dish_data = await dish_recognition_uc.recognize_dish_from_audio(file_bytes=file_bytes)
         except AudioToTextError:
-            await processing_message.edit_text("❌ Не удалось распознать аудио.")
+            await processing_message.edit_text("❌ Не удалось распознать аудио. Попробуйте еще раз.")
             await asyncio.sleep(2)
             await bot.delete_message(chat_id=message.chat.id, message_id=processing_message.message_id)
             await state.clear()
@@ -108,7 +108,7 @@ async def process_dish_audio(message: types.Message, state: FSMContext):
         await statistics_uc.update_statistics(user_id=user_id, dish_id=dish_data.id)
     except Exception as e:
         logging.error(f"Ошибка={e}")
-        await processing_message.edit_text("❌ Не удалось распознать аудио.")
+        await processing_message.edit_text("❌ Не удалось рассчитать калории. Попробуйте еще раз.")
     finally:
         await state.clear()
 

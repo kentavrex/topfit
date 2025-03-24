@@ -41,6 +41,7 @@ class RecommendationUseCase:
         dish_recommendation_text = await self._get_dish_recommendation_message_text(user_id=user_id)
         async with self._ai_client as ai_client:
             dish_recommendation = await ai_client.get_dish_recommendation(message=dish_recommendation_text)
+
         async with self._db as db:
             saved_dish = await db.save_dish(DishData(**dish_recommendation.model_dump()))
             await db.save_user_recommendation(user_id=user_id, dish_id=saved_dish.id)
