@@ -250,3 +250,8 @@ async def process_goal(message: types.Message, state: FSMContext):
     await uc.set_nutrition_goal(user_id=user_id, goal_data=goal_data)
     await message.answer(f"Цель обновлена!", reply_markup=user_kb)
     await state.clear()
+
+
+@router.message()
+async def unknown_command(message: types.Message):
+    await message.answer("❌ Неизвестная команда. Пожалуйста, проверьте ввод и попробуйте снова.")
