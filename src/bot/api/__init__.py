@@ -32,10 +32,15 @@ async def process_dish_text(message: types.Message, state: FSMContext):
     user_id = message.from_user.id
     statistics_uc: StatisticsUseCase = container.resolve(StatisticsUseCase)
     dish_recognition_uc: DishRecognitionUseCase = container.resolve(DishRecognitionUseCase)
-    dish_data = await dish_recognition_uc.recognize_dish_from_text(dish_name=message.text)
-    await send_dish_info(message, dish_data)
-    await statistics_uc.update_statistics(user_id=user_id, dish_id=dish_data.id)
-    await state.clear()
+    try:
+        dish_data = await dish_recognition_uc.recognize_dish_from_text(dish_name=message.text)
+        await send_dish_info(message, dish_data)
+        await statistics_uc.update_statistics(user_id=user_id, dish_id=dish_data.id)
+    except Exception as e:
+        logging.error(f"Ошибка={e}")
+        await message.answer("❌ Не удалось распознать фото.")
+    finally:
+        await state.clear()
 
 
 @router.message(AddMealStates.waiting_dish_obj, F.photo)
@@ -48,21 +53,27 @@ async def process_dish_image(message: types.Message, state: FSMContext):
     user_id = message.from_user.id
     bot = message.bot
 
-    file = await bot.get_file(message.photo[-1].file_id)
-    file_bytes = await bot.download_file(file.file_path)
-    file_bytes = file_bytes.read() if isinstance(file_bytes, BytesIO) else file_bytes
+    try:
+        file = await bot.get_file(message.photo[-1].file_id)
+        file_bytes = await bot.download_file(file.file_path)
+        file_bytes = file_bytes.read() if isinstance(file_bytes, BytesIO) else file_bytes
 
-    mime = magic.Magic(mime=True)
-    mime_type = mime.from_buffer(file_bytes)
-    logging.info(f"mime_type={mime_type}")
-    dish_data = await dish_recognition_uc.recognize_dish_from_image(dish_bytes=file_bytes,
-                                                                    mime_type=mime_type)
-    await send_dish_info(message, dish_data)
-    await processing_message.edit_text("✅ Подсчет завершен!")
-    await asyncio.sleep(3)
-    await bot.delete_message(chat_id=message.chat.id, message_id=processing_message.message_id)
-    await statistics_uc.update_statistics(user_id=user_id, dish_id=dish_data.id)
-    await state.clear()
+        mime = magic.Magic(mime=True)
+        mime_type = mime.from_buffer(file_bytes)
+        logging.info(f"mime_type={mime_type}")
+        dish_data = await dish_recognition_uc.recognize_dish_from_image(dish_bytes=file_bytes,
+                                                                        mime_type=mime_type)
+
+        await send_dish_info(message, dish_data)
+        await processing_message.edit_text("✅ Подсчет завершен!")
+        await asyncio.sleep(3)
+        await bot.delete_message(chat_id=message.chat.id, message_id=processing_message.message_id)
+        await statistics_uc.update_statistics(user_id=user_id, dish_id=dish_data.id)
+    except Exception as e:
+        logging.error(f"Ошибка={e}")
+        await processing_message.edit_text("❌ Не удалось распознать фото.")
+    finally:
+        await state.clear()
 
 
 @router.message(AddMealStates.waiting_dish_obj, F.voice)
@@ -74,24 +85,30 @@ async def process_dish_audio(message: types.Message, state: FSMContext):
     user_id = message.from_user.id
     bot = message.bot
 
-    file = await bot.get_file(message.voice.file_id)
-    file_bytes_io = await bot.download_file(file.file_path)
-    file_bytes = file_bytes_io.read()  # Приводим BytesIO к bytes
-
     try:
-        dish_data = await dish_recognition_uc.recognize_dish_from_audio(file_bytes=file_bytes)
-    except AudioToTextError:
-        await processing_message.edit_text("❌ Не удалось распознать аудио.")
-        await asyncio.sleep(2)
-        await bot.delete_message(chat_id=message.chat.id, message_id=processing_message.message_id)
-        return
+        file = await bot.get_file(message.voice.file_id)
+        file_bytes_io = await bot.download_file(file.file_path)
+        file_bytes = file_bytes_io.read()  # Приводим BytesIO к bytes
 
-    await send_dish_info(message, dish_data)
-    await processing_message.edit_text("✅ Подсчет завершен!")
-    await asyncio.sleep(3)
-    await bot.delete_message(chat_id=message.chat.id, message_id=processing_message.message_id)
-    await statistics_uc.update_statistics(user_id=user_id, dish_id=dish_data.id)
-    await state.clear()
+        try:
+            dish_data = await dish_recognition_uc.recognize_dish_from_audio(file_bytes=file_bytes)
+        except AudioToTextError:
+            await processing_message.edit_text("❌ Не удалось распознать аудио.")
+            await asyncio.sleep(2)
+            await bot.delete_message(chat_id=message.chat.id, message_id=processing_message.message_id)
+            await state.clear()
+            return
+
+        await send_dish_info(message, dish_data)
+        await processing_message.edit_text("✅ Подсчет завершен!")
+        await asyncio.sleep(3)
+        await bot.delete_message(chat_id=message.chat.id, message_id=processing_message.message_id)
+        await statistics_uc.update_statistics(user_id=user_id, dish_id=dish_data.id)
+    except Exception as e:
+        logging.error(f"Ошибка={e}")
+        await processing_message.edit_text("❌ Не удалось распознать аудио.")
+    finally:
+        await state.clear()
 
 
 async def send_dish_info(message: types.Message, dish_data):
