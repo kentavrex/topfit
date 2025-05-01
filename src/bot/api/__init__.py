@@ -6,20 +6,21 @@ import magic
 from aiogram import F, Router, types
 from aiogram.fsm.context import FSMContext
 
-from bot.keyboards import goal_update_kb, goal_set_kb, user_kb
+from bot.keyboards import goal_update_kb, goal_set_kb, user_kb, statistics_set_kb
 from bot.validators import validate_height, validate_weight, validate_age, validate_gender, validate_goal
 from bot.states import AddMealStates, SetNutritionGoalStates
 from dependencies import container
 from usecases import UsersUseCase, DishRecognitionUseCase, RecommendationUseCase, StatisticsUseCase
-from usecases.errors import UserNutritionNotSetError, AudioToTextError
+from usecases.errors import UserNutritionNotSetError, AudioToTextError, MaxRetryError
 from usecases.schemas import GoalType, NutritionGoalSchema
 
 router = Router()
 
 
 @router.message(F.text.lower() == "главное меню")
-async def add_dish(message: types.Message):
-    await message.answer("К главному меню", reply_markup=user_kb)
+async def main_menu(message: types.Message):
+    await message.delete()
+    await message.answer("Главное меню", reply_markup=user_kb)
 
 
 @router.message(F.text.lower() == "добавить блюдо")
@@ -129,7 +130,7 @@ async def send_dish_info(message: types.Message, dish_data):
 async def get_daily_statistics(message: types.Message):
     user_id = message.from_user.id
     uc: StatisticsUseCase = container.resolve(StatisticsUseCase)
-    counted_statistics = await uc.get_statistics(user_id=user_id)
+    counted_statistics = await uc.get_daily_statistics(user_id=user_id)
     await message.answer(
         f"📅 **Статистика за сегодня**:\n"
         f"🥩 **Белки**: {counted_statistics.protein:.1f} г\n"
@@ -137,7 +138,63 @@ async def get_daily_statistics(message: types.Message):
         f"🍞 **Углеводы**: {counted_statistics.carbohydrates:.1f} г\n"
         f"🔥 **Калории**: {counted_statistics.calories:.1f} ккал\n",
         parse_mode="Markdown",
+        reply_markup = statistics_set_kb,
     )
+
+
+@router.message(F.text.lower() == "статистика за месяц")
+async def get_monthly_statistics(message: types.Message):
+    processing_message = await message.answer(
+        f"⌛ **Подсчет статистики за последние 30 дней начался..**\n",
+        parse_mode="Markdown"
+    )
+    user_id = message.from_user.id
+    uc: StatisticsUseCase = container.resolve(StatisticsUseCase)
+    counted_statistics = await uc.get_monthly_statistics(user_id=user_id)
+    month_data = []
+    for stat in counted_statistics:
+        if stat.calories > 0:
+            entry = (f"{stat.date_from.strftime('%d.%m')}: "
+                     f"{stat.calories:.1f}/"
+                     f"{stat.protein:.1f}/"
+                     f"{stat.fat:.1f}/"
+                     f"{stat.carbohydrates:.1f}")
+        else:
+            entry = f"{stat.date_from.strftime('%d.%m')}: данные отсутствуют"
+        month_data.append(entry)
+
+    text = "📅 **Статистика: калории/белки/жиры/углеводы**\n" + "\n".join(month_data)
+    await message.bot.delete_message(chat_id=message.chat.id, message_id=processing_message.message_id)
+    await message.answer(text, parse_mode="Markdown")
+
+
+@router.message(F.text.lower() == "цель")
+async def handle_goal(message: types.Message):
+    user_id = message.from_user.id
+    uc: UsersUseCase = container.resolve(UsersUseCase)
+
+    try:
+        nutrition = await uc.get_nutrition_goal(user_id=user_id)
+        await message.answer(
+            f"📅 **Ваша дневная цель КБЖУ**:\n"
+            f"🥩 **Белки**: {nutrition.protein:.1f} г\n"
+            f"🧈 **Жиры**: {nutrition.fat:.1f} г\n"
+            f"🍞 **Углеводы**: {nutrition.carbohydrates:.1f} г\n"
+            f"🔥 **Калории**: {nutrition.calories:.1f} ккал\n",
+            parse_mode="Markdown",
+            reply_markup=goal_update_kb,
+        )
+    except UserNutritionNotSetError:
+        await message.answer(
+            "У вас ещё нет заданной цели. Задайте её сейчас, чтобы получать рекомендации.",
+            reply_markup=goal_set_kb,
+        )
+
+
+@router.message(F.text.lower() == "обновить цель")
+async def update_nutrition_goal(message: types.Message, state: FSMContext):
+    await set_nutrition_goal(message=message, state=state)
+
 
 @router.message(F.text.lower() == "ai рекомендация")
 async def generate_user_dish_recommendation(message: types.Message):
@@ -151,6 +208,9 @@ async def generate_user_dish_recommendation(message: types.Message):
     uc: RecommendationUseCase = container.resolve(RecommendationUseCase)
     try:
         recommendation = await uc.generate_recommendation(user_id=user_id)
+    except MaxRetryError:
+        await message.answer("Техническая ошибка. Попробуйте еще раз позднее.")
+        return
     except UserNutritionNotSetError:
         await message.bot.delete_message(chat_id=message.chat.id, message_id=processing_message.message_id)
         await message.answer(

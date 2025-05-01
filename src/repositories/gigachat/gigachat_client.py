@@ -6,9 +6,9 @@ import time
 from functools import wraps
 
 import httpx
-from typing import Self, BinaryIO
+from typing import Self
 
-from usecases.errors import NotFoundError
+from usecases.errors import NotFoundError, MaxRetryError
 from usecases.interfaces import AIClientInterface
 from config import GigachatConfig
 from usecases.schemas import DishRecommendation, DishData
@@ -34,7 +34,7 @@ def retry(retry_num: int = 3, retry_sleep_sec: int = 2):
                     time.sleep(retry_sleep_sec)
                 else:
                     logging.error(f"Не удалось выполнить {func.__name__} после {retry_num} попыток")
-                    raise Exception(f'Превышено максимальное количество попыток для {func.__name__}')
+                    raise MaxRetryError(f'Превышено максимальное количество попыток для {func.__name__}')
             return None
 
         return wrapper
@@ -173,48 +173,6 @@ class GigachatClient(AIClientInterface):
         return DishData(**response_parsed)
 
     @retry()
-    async def get_dish_recommendation(self, message: str, additional_message: str = '') -> DishRecommendation:
-        system_message = (
-            """Тебе нужно предложить пользователю блюдо на основании следующих данных:
-            1. Блюдо не должно сильно превышать норму (белки, жиры, углеводы, калории).  
-            2. Список прошлых блюд пользователя с их КБЖУ — эта информация поможет понять вкусовые предпочтения 
-            пользователя.
-            Важно:
-            - Блюдо не обязательно должно быть из прошлых блюд пользователя.
-            - КБЖУ 1 порции блюда должно укладываться в дневную норму КБЖУ клиента - может быть меньше,
-             главное не больше.
-            - Рецепт может быть на несколько порций, в ответе КБЖУ возвращай для всех порций.
-
-            Формат ответа: строго в формате JSON, содержащий:
-            - "protein" (float) — белки во всех порциях
-            - "fat" (float) — жиры во всех порциях
-            - "carbohydrates" (float) — углеводы во всех порциях
-            - "calories" (float) — калории во всех порциях
-            - "name" (str) — название блюда
-            - "receipt" (str) — рецепт (включая ингредиенты с граммировками и приготовлением)
-            - "servings_count" (int) - кол-во порций, которые получаются в рецепте
-
-            Пример ответа:
-            ```json
-            {
-                "protein": 25.0,
-                "fat": 10.0,
-                "carbohydrates": 50.0,
-                "calories": 400.0,
-                "name": "Ризотто с цыпленком",
-                "receipt": "Рецепт (включая ингредиенты с граммировками и приготовлением)"
-                "servings_count": 5
-            }
-            ```
-            """
-        )
-        response = await self._send_request(system_message=system_message,
-                                            user_message=message,
-                                            additional_message=additional_message)
-        response_parsed = await self._parse_json_response(response)
-        return DishRecommendation(**response_parsed)
-
-    @retry()
     async def recognize_meal_by_image(
             self, dish_bytes: bytes, mime_type: str, additional_message: str = ''
     ) -> DishData:
@@ -278,3 +236,46 @@ class GigachatClient(AIClientInterface):
                                             additional_message=additional_message)
         response_parsed = await self._parse_json_response(response)
         return DishData(**response_parsed)
+
+    @retry()
+    async def get_dish_recommendation(self, message: str, additional_message: str = '') -> DishRecommendation:
+        system_message = (
+            """Тебе нужно предложить пользователю блюдо на основании следующих данных:
+            1. Блюдо не должно сильно превышать желаемый КБЖУ (из role user content) на 1 порцию.  
+            2. Список прошлых блюд пользователя с их КБЖУ — эта информация поможет понять вкусовые предпочтения 
+            пользователя.
+            Важно:
+            - Блюдо не обязательно должно быть из прошлых блюд пользователя.
+            - Желательно учесть вкусовые предпочтения из прошлых блюд.
+            - КБЖУ 1 порции блюда должно укладываться в желаемый КБЖУ (из role user content) - может быть меньше,
+             но не больше.
+            - Рецепт может быть на несколько порций, в ответе КБЖУ возвращай суммарно для всех порций.
+
+            Формат ответа: строго в формате JSON, содержащий:
+            - "protein" (float) — белки во всех порциях
+            - "fat" (float) — жиры во всех порциях
+            - "carbohydrates" (float) — углеводы во всех порциях
+            - "calories" (float) — калории во всех порциях
+            - "name" (str) — название блюда
+            - "receipt" (str) — рецепт (включая ингредиенты с граммировками и приготовлением)
+            - "servings_count" (int) - кол-во порций, которые получаются в рецепте
+
+            Пример ответа:
+            ```json
+            {
+                "protein": 25.0,
+                "fat": 10.0,
+                "carbohydrates": 50.0,
+                "calories": 400.0,
+                "name": "Ризотто с цыпленком",
+                "receipt": "Рецепт (включая ингредиенты с граммировками и приготовлением)"
+                "servings_count": 5
+            }
+            ```
+            """
+        )
+        response = await self._send_request(system_message=system_message,
+                                            user_message=message,
+                                            additional_message=additional_message)
+        response_parsed = await self._parse_json_response(response)
+        return DishRecommendation(**response_parsed)

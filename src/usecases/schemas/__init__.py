@@ -69,9 +69,9 @@ class DishRecommendation(DishData):
 
 class CountedStatisticsSchema(CustomBaseModel):
     user_id: int
-    protein: float
-    fat: float
-    carbohydrates: float
-    calories: float
+    protein: float = 0
+    fat: float = 0
+    carbohydrates: float = 0
+    calories: float = 0
     date_from: datetime.date | None = None
     date_to: datetime.date | None = None

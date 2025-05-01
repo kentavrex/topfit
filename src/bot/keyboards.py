@@ -34,3 +34,9 @@ goal_set_kb = ReplyKeyboardMarkup(
                KeyboardButton(text="Главное меню")]],
     resize_keyboard=True,
 )
+
+statistics_set_kb = ReplyKeyboardMarkup(
+    keyboard=[[KeyboardButton(text="Статистика за месяц"),
+               KeyboardButton(text="Главное меню")]],
+    resize_keyboard=True,
+)
