@@ -1,4 +1,5 @@
 import datetime
+from decimal import Decimal
 from enum import Enum
 
 from pydantic import BaseModel
@@ -44,10 +45,10 @@ class NutritionGoalSchema(CustomBaseModel):
 
 
 class NutritionData(CustomBaseModel):
-    protein: float = 0.0
-    fat: float = 0.0
-    carbohydrates: float = 0.0
-    calories: float = 0.0
+    protein: Decimal = Decimal(0)
+    fat: Decimal =Decimal(0)
+    carbohydrates: Decimal = Decimal(0)
+    calories: Decimal = Decimal(0)
 
 
 class NutritionSchema(NutritionData):
@@ -69,9 +70,9 @@ class DishRecommendation(DishData):
 
 class CountedStatisticsSchema(CustomBaseModel):
     user_id: int
-    protein: float = 0
-    fat: float = 0
-    carbohydrates: float = 0
-    calories: float = 0
+    protein: Decimal = Decimal(0)
+    fat: Decimal = Decimal(0)
+    carbohydrates: Decimal = Decimal(0)
+    calories: Decimal = Decimal(0)
     date_from: datetime.date | None = None
     date_to: datetime.date | None = None

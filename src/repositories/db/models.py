@@ -14,10 +14,10 @@ class Nutrition(Base):
     __tablename__ = "nutrition"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    protein: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False)
-    fat: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False)
-    carbohydrates: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False)
-    calories: Mapped[Decimal] = mapped_column(Numeric(6, 2), nullable=False)
+    protein: Mapped[Decimal] = mapped_column(Numeric(5, 1), nullable=False)
+    fat: Mapped[Decimal] = mapped_column(Numeric(5, 1), nullable=False)
+    carbohydrates: Mapped[Decimal] = mapped_column(Numeric(5, 1), nullable=False)
+    calories: Mapped[Decimal] = mapped_column(Numeric(6, 1), nullable=False)
 
     def __repr__(self) -> str:
         return (f"<Nutrition protein={self.protein} fat={self.fat} "

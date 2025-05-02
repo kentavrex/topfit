@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from decimal import Decimal
 
 from config import settings
 from usecases.interfaces import DBRepositoryInterface
@@ -21,10 +22,10 @@ class StatisticsUseCase:
             user_id=user_id,
             date_from=today,
             date_to=today,
-            protein=sum(stat.protein for stat in dishes_history),
-            fat=sum(stat.fat for stat in dishes_history),
-            carbohydrates=sum(stat.carbohydrates for stat in dishes_history),
-            calories=sum(stat.calories for stat in dishes_history),
+            protein=sum((stat.protein for stat in dishes_history), start=Decimal('0')),
+            fat=sum((stat.fat for stat in dishes_history), start=Decimal('0')),
+            carbohydrates=sum((stat.carbohydrates for stat in dishes_history), start=Decimal('0')),
+            calories=sum((stat.calories for stat in dishes_history), start=Decimal('0')),
         )
 
     async def get_monthly_statistics(self, user_id: int) -> list[CountedStatisticsSchema]:
@@ -50,10 +51,10 @@ class StatisticsUseCase:
                     user_id=user_id,
                     date_from=current_date,
                     date_to=current_date,
-                    protein=sum(d.protein for d in dishes),
-                    fat=sum(d.fat for d in dishes),
-                    carbohydrates=sum(d.carbohydrates for d in dishes),
-                    calories=sum(d.calories for d in dishes),
+                    protein=sum((d.protein for d in dishes), start=Decimal('0')),
+                    fat=sum((d.fat for d in dishes), start=Decimal('0')),
+                    carbohydrates=sum((d.carbohydrates for d in dishes), start=Decimal('0')),
+                    calories=sum((d.calories for d in dishes), start=Decimal('0')),
                 ))
 
         return statistics

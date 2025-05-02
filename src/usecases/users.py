@@ -1,4 +1,4 @@
-import json
+from decimal import Decimal
 
 from usecases.errors import UserNutritionNotSetError
 from usecases.interfaces import DBRepositoryInterface, AIClientInterface
@@ -62,10 +62,10 @@ class UsersUseCase:
         carbs = (daily_calories * 0.4) / 4  # Углеводы: 4 ккал на грамм
 
         return NutritionData(
-            calories=round(daily_calories, 1),
-            protein=round(protein, 1),
-            fat=round(fat, 1),
-            carbohydrates=round(carbs, 1)
+            calories=round(Decimal(daily_calories), 1),
+            protein=round(Decimal(protein), 1),
+            fat=round(Decimal(fat), 1),
+            carbohydrates=round(Decimal(carbs), 1)
         )
 
     def __calculate_nutrition_goal(self, goal_data: NutritionGoalSchema) -> NutritionData:

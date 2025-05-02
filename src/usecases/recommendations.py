@@ -1,4 +1,5 @@
 import datetime
+from decimal import Decimal
 
 from config import settings
 from usecases.errors import UserNutritionNotSetError
@@ -26,10 +27,11 @@ class RecommendationUseCase:
             )
         dish_nutrition_goal_text = CountedStatisticsSchema(
             user_id=user_id,
-            protein=max(user_nutrition_goal.protein - sum(stat.protein for stat in dishes_history), 2),
-            fat=max(user_nutrition_goal.fat - sum(stat.fat for stat in dishes_history), 0),
-            carbohydrates=max(user_nutrition_goal.carbohydrates - sum(stat.carbohydrates for stat in dishes_history), 10),
-            calories=max(user_nutrition_goal.calories - sum(stat.calories for stat in dishes_history), 300),
+            protein=max(user_nutrition_goal.protein - sum(stat.protein for stat in dishes_history), Decimal(2)),
+            fat=max(user_nutrition_goal.fat - sum(stat.fat for stat in dishes_history), Decimal(0)),
+            carbohydrates=max(user_nutrition_goal.carbohydrates - sum(stat.carbohydrates for stat in dishes_history),
+                              Decimal(10)),
+            calories=max(user_nutrition_goal.calories - sum(stat.calories for stat in dishes_history), Decimal(300)),
         )
         if user_dishes_history:
             return (f"Примерный (не точный) желаемый кбжу: {dish_nutrition_goal_text}. "
