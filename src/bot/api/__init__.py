@@ -160,7 +160,7 @@ async def get_monthly_statistics(message: types.Message):
                      f"{stat.fat:.1f}/"
                      f"{stat.carbohydrates:.1f}")
         else:
-            entry = f"{stat.date_from.strftime('%d.%m')}: данные отсутствуют"
+            entry = f"{stat.date_from.strftime('%d.%m')}: -"
         month_data.append(entry)
 
     text = "📅 **Статистика: калории/белки/жиры/углеводы**\n" + "\n".join(month_data)
