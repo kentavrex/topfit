@@ -68,8 +68,8 @@ class DBRepository(DBRepositoryInterface):
         query = (
             select(Statistics)
             .filter(Statistics.user_id == user_id)
-            .filter(Statistics.date >= date_from)
-            .filter(Statistics.date <= date_to)
+            .filter(Statistics.created_at >= date_from)
+            .filter(Statistics.created_at <= date_to)
         ).options(
             joinedload(Statistics.dish).joinedload(Dish.nutrition)
         )

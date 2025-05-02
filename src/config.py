@@ -33,5 +33,5 @@ class Settings(BaseSettings):
 settings = Settings()
 
 
-def current_moscow_date():
-    return datetime.datetime.now(settings.moscow_tz).date()
+def current_moscow_datetime():
+    return datetime.datetime.now(settings.moscow_tz)

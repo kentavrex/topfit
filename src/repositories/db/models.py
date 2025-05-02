@@ -4,7 +4,7 @@ from decimal import Decimal
 from sqlalchemy import BigInteger, ForeignKey, Numeric, String, TIMESTAMP
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
-from config import current_moscow_date
+from config import current_moscow_datetime
 
 
 class Base(DeclarativeBase): ...
@@ -43,7 +43,7 @@ class RecommendationHistory(Base):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.telegram_id"))
     dish_id: Mapped[int] = mapped_column(ForeignKey("dishes.id"))
-    created_at: Mapped[datetime.datetime] = mapped_column(TIMESTAMP(timezone=True), default=current_moscow_date)
+    created_at: Mapped[datetime.datetime] = mapped_column(TIMESTAMP(timezone=True), default=current_moscow_datetime)
 
     user: Mapped["User"] = relationship(back_populates="recommendation_history")
     dish: Mapped["Dish"] = relationship()
@@ -62,14 +62,14 @@ class Statistics(Base):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.telegram_id"))
     dish_id: Mapped[int] = mapped_column(ForeignKey("dishes.id"))
-    date: Mapped[datetime.datetime] = mapped_column(TIMESTAMP(timezone=True), default=current_moscow_date)
+    created_at: Mapped[datetime.datetime] = mapped_column(TIMESTAMP(timezone=True), default=current_moscow_datetime)
     like: Mapped[bool]  = mapped_column(default=True) # Оценка блюда (нравится/не нравится)
 
     user: Mapped["User"] = relationship(back_populates="statistics")
     dish: Mapped["Dish"] = relationship()
 
     def __repr__(self) -> str:
-        return f"<Statistics user_id={self.user_id} date={self.date} add dish_id={self.dish_id}>"
+        return f"<Statistics user_id={self.user_id} date={self.created_at} add dish_id={self.dish_id}>"
 
 
 class User(Base):
