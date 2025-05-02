@@ -154,13 +154,13 @@ async def get_monthly_statistics(message: types.Message):
     month_data = []
     for stat in counted_statistics:
         if stat.calories > 0:
-            entry = (f"{stat.date_from.strftime('%d.%m')}: "
+            entry = (f"{stat.valid_from_dt.strftime('%d.%m')}: "
                      f"{stat.calories:.1f}/"
                      f"{stat.protein:.1f}/"
                      f"{stat.fat:.1f}/"
                      f"{stat.carbohydrates:.1f}")
         else:
-            entry = f"{stat.date_from.strftime('%d.%m')}: -"
+            entry = f"{stat.valid_from_dt.strftime('%d.%m')}: -"
         month_data.append(entry)
 
     text = "📅 **Статистика: калории/белки/жиры/углеводы**\n" + "\n".join(month_data)

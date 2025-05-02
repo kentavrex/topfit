@@ -74,5 +74,5 @@ class CountedStatisticsSchema(CustomBaseModel):
     fat: Decimal = Decimal(0)
     carbohydrates: Decimal = Decimal(0)
     calories: Decimal = Decimal(0)
-    date_from: datetime.date | None = None
-    date_to: datetime.date | None = None
+    valid_from_dt: datetime.datetime | None = None
+    valid_to_dt: datetime.datetime | None = None
