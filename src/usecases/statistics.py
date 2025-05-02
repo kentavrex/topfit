@@ -1,6 +1,7 @@
 import logging
 from datetime import datetime, timedelta, time
 from decimal import Decimal
+from zoneinfo import ZoneInfo
 
 from config import settings
 from usecases.interfaces import DBRepositoryInterface
@@ -12,9 +13,11 @@ class StatisticsUseCase:
         self._db = db_repository
 
     async def get_daily_statistics(self, user_id: int) -> CountedStatisticsSchema:
-        now = datetime.now(settings.moscow_tz)
-        today_start = datetime.combine(now.date(), time.min).replace(tzinfo=settings.moscow_tz)
-        today_end = datetime.combine(now.date(), time.max).replace(tzinfo=settings.moscow_tz)
+        moscow_tz = ZoneInfo("Europe/Moscow")
+        now = datetime.now(moscow_tz)
+        today = now.date()
+        today_start = datetime.combine(today, time.min).replace(tzinfo=moscow_tz)
+        today_end = datetime.combine(today, time.max).replace(tzinfo=moscow_tz)
         logging.info(f"{today_start=}")
         logging.info(f"{today_end=}")
         async with self._db as db:
