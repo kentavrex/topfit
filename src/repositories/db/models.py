@@ -1,6 +1,6 @@
 import datetime
 
-from sqlalchemy import BigInteger, ForeignKey
+from sqlalchemy import BigInteger, ForeignKey, TIMESTAMP, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from config import current_moscow_date
@@ -42,7 +42,7 @@ class RecommendationHistory(Base):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.telegram_id"))
     dish_id: Mapped[int] = mapped_column(ForeignKey("dishes.id"))
-    created_at: Mapped[datetime.datetime] = mapped_column(default=current_moscow_date)
+    created_at: Mapped[datetime.datetime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
 
     user: Mapped["User"] = relationship(back_populates="recommendation_history")
     dish: Mapped["Dish"] = relationship()
@@ -61,7 +61,7 @@ class Statistics(Base):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.telegram_id"))
     dish_id: Mapped[int] = mapped_column(ForeignKey("dishes.id"))
-    date: Mapped[datetime.date] = mapped_column(default=current_moscow_date)
+    date: Mapped[datetime.date] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
     like: Mapped[bool]  = mapped_column(default=True) # Оценка блюда (нравится/не нравится)
 
     user: Mapped["User"] = relationship(back_populates="statistics")
