@@ -11,17 +11,18 @@ class StatisticsUseCase:
         self._db = db_repository
 
     async def get_daily_statistics(self, user_id: int) -> CountedStatisticsSchema:
-        today = datetime.now(settings.moscow_tz).date()
+        today_start = datetime.now(settings.moscow_tz).date()
+        today_end = datetime.now(settings.moscow_tz).date() + timedelta(days=1) - timedelta(minutes=1)
         async with self._db as db:
             dishes_history: [DishSchema] = await db.get_user_dishes_history_by_period(
                 user_id=user_id,
-                date_from=today,
-                date_to=today
+                date_from=today_start,
+                date_to=today_end,
             )
         return CountedStatisticsSchema(
             user_id=user_id,
-            date_from=today,
-            date_to=today,
+            date_from=today_start,
+            date_to=today_end,
             protein=sum((stat.protein for stat in dishes_history), start=Decimal('0')),
             fat=sum((stat.fat for stat in dishes_history), start=Decimal('0')),
             carbohydrates=sum((stat.carbohydrates for stat in dishes_history), start=Decimal('0')),
@@ -35,22 +36,23 @@ class StatisticsUseCase:
         statistics = []
         async with self._db as db:
             for offset in range(30):
-                current_date = start_date + timedelta(days=offset)
+                current_date_start = start_date + timedelta(days=offset)
+                current_date_end = start_date + timedelta(days=offset) + timedelta(days=1) - timedelta(minutes=1)
                 dishes: [DishSchema] = await db.get_user_dishes_history_by_period(
                     user_id=user_id,
-                    date_from=current_date,
-                    date_to=current_date
+                    date_from=current_date_start,
+                    date_to=current_date_end
                 )
                 if not dishes:
                     statistics.append(CountedStatisticsSchema(user_id=user_id,
-                                                              date_from=current_date,
-                                                              date_to=current_date))
+                                                              date_from=current_date_start,
+                                                              date_to=current_date_end))
                     continue
 
                 statistics.append(CountedStatisticsSchema(
                     user_id=user_id,
-                    date_from=current_date,
-                    date_to=current_date,
+                    date_from=current_date_start,
+                    date_to=current_date_end,
                     protein=sum((d.protein for d in dishes), start=Decimal('0')),
                     fat=sum((d.fat for d in dishes), start=Decimal('0')),
                     carbohydrates=sum((d.carbohydrates for d in dishes), start=Decimal('0')),
