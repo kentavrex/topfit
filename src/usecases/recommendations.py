@@ -22,8 +22,8 @@ class RecommendationUseCase:
             user_dishes_history: list[str] = await db.get_user_dishes_history(user_id=user_id, limit=50)
             dishes_history: [DishSchema] = await db.get_user_dishes_history_by_period(
                 user_id=user_id,
-                date_from=datetime.datetime.now(tz=settings.moscow_tz).date(),
-                date_to=datetime.datetime.now(tz=settings.moscow_tz).date()
+                valid_from_dt=datetime.datetime.now(tz=settings.moscow_tz),
+                valid_to_dt=datetime.datetime.now(tz=settings.moscow_tz),
             )
         dish_nutrition_goal_text = CountedStatisticsSchema(
             user_id=user_id,

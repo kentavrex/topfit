@@ -32,7 +32,7 @@ class DBRepositoryInterface(ABC):
 
     @abstractmethod
     async def get_user_dishes_history_by_period(
-            self, user_id: int, date_from: datetime.date, date_to: datetime.date
+            self, user_id: int, valid_from_dt: datetime.datetime, valid_to_dt: datetime.datetime
     ) -> list[DishSchema]: ...
 
     @abstractmethod

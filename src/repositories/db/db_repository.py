@@ -63,13 +63,13 @@ class DBRepository(DBRepositoryInterface):
         await self._session.flush()
 
     async def get_user_dishes_history_by_period(
-            self, user_id: int, date_from: datetime.date, date_to: datetime.date
+            self, user_id: int, valid_from_dt: datetime.datetime, valid_to_dt: datetime.datetime
     ) -> list[DishSchema]:
         query = (
             select(Statistics)
             .filter(Statistics.user_id == user_id)
-            .filter(Statistics.created_at >= date_from)
-            .filter(Statistics.created_at <= date_to)
+            .filter(Statistics.created_at >= valid_from_dt)
+            .filter(Statistics.created_at <= valid_to_dt)
         ).options(
             joinedload(Statistics.dish).joinedload(Dish.nutrition)
         )
