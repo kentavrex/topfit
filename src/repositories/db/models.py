@@ -76,7 +76,7 @@ class User(Base):
     __tablename__ = "users"
 
     telegram_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    first_name: Mapped[str] = mapped_column(String(100), nullable=False)
     last_name: Mapped[str | None] = mapped_column(String(100))
     username: Mapped[str | None] = mapped_column(String(100))
     nutrition_goal_id: Mapped[int | None] = mapped_column(ForeignKey("nutrition.id"))
