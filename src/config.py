@@ -1,6 +1,6 @@
 import datetime
+from zoneinfo import ZoneInfo
 
-import pytz
 from dotenv import load_dotenv
 from pydantic_settings import BaseSettings
 
@@ -24,7 +24,7 @@ class GigachatConfig(BaseSettings):
 
 
 class Settings(BaseSettings):
-    moscow_tz: datetime.tzinfo = pytz.timezone("Europe/Moscow")
+    moscow_tz: datetime.tzinfo = ZoneInfo("Europe/Moscow")
     db_config: DBConfig = DBConfig()
     TELEGRAM_BOT_TOKEN: str = ""
     ADMIN_ID: int = 0
