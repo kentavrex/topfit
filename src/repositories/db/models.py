@@ -1,6 +1,7 @@
 import datetime
+from decimal import Decimal
 
-from sqlalchemy import BigInteger, ForeignKey
+from sqlalchemy import BigInteger, ForeignKey, Numeric, String, TIMESTAMP
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from config import current_moscow_date
@@ -13,10 +14,10 @@ class Nutrition(Base):
     __tablename__ = "nutrition"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    protein: Mapped[float]
-    fat: Mapped[float]
-    carbohydrates: Mapped[float]
-    calories: Mapped[float]
+    protein: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False)
+    fat: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False)
+    carbohydrates: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False)
+    calories: Mapped[Decimal] = mapped_column(Numeric(6, 2), nullable=False)
 
     def __repr__(self) -> str:
         return (f"<Nutrition protein={self.protein} fat={self.fat} "
@@ -27,7 +28,7 @@ class Dish(Base):
     __tablename__ = "dishes"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    name: Mapped[str]
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
     nutrition_id: Mapped[int] = mapped_column(ForeignKey("nutrition.id"))
 
     nutrition: Mapped["Nutrition"] = relationship()
@@ -42,7 +43,7 @@ class RecommendationHistory(Base):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.telegram_id"))
     dish_id: Mapped[int] = mapped_column(ForeignKey("dishes.id"))
-    created_at: Mapped[datetime.datetime] = mapped_column(default=current_moscow_date)
+    created_at: Mapped[datetime.datetime] = mapped_column(TIMESTAMP(timezone=True), default=current_moscow_date)
 
     user: Mapped["User"] = relationship(back_populates="recommendation_history")
     dish: Mapped["Dish"] = relationship()
@@ -61,7 +62,7 @@ class Statistics(Base):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.telegram_id"))
     dish_id: Mapped[int] = mapped_column(ForeignKey("dishes.id"))
-    date: Mapped[datetime.date] = mapped_column(default=current_moscow_date)
+    date: Mapped[datetime.datetime] = mapped_column(TIMESTAMP(timezone=True), default=current_moscow_date)
     like: Mapped[bool]  = mapped_column(default=True) # Оценка блюда (нравится/не нравится)
 
     user: Mapped["User"] = relationship(back_populates="statistics")
@@ -75,9 +76,9 @@ class User(Base):
     __tablename__ = "users"
 
     telegram_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    first_name: Mapped[str]
-    last_name: Mapped[str | None]
-    username: Mapped[str | None]
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    last_name: Mapped[str | None] = mapped_column(String(100))
+    username: Mapped[str | None] = mapped_column(String(100))
     nutrition_goal_id: Mapped[int | None] = mapped_column(ForeignKey("nutrition.id"))
 
     statistics: Mapped[list["Statistics"]] = relationship(back_populates="user")
