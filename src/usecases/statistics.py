@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 from decimal import Decimal
 
 from config import settings
@@ -11,8 +11,9 @@ class StatisticsUseCase:
         self._db = db_repository
 
     async def get_daily_statistics(self, user_id: int) -> CountedStatisticsSchema:
-        today_start = datetime.now(settings.moscow_tz).date()
-        today_end = datetime.now(settings.moscow_tz).date() + timedelta(days=1) - timedelta(minutes=1)
+        now = datetime.now(settings.moscow_tz)
+        today_start = datetime.combine(now.date(), time.min, tzinfo=settings.moscow_tz)
+        today_end = datetime.combine(now.date(), time.max, tzinfo=settings.moscow_tz)
         async with self._db as db:
             dishes_history: [DishSchema] = await db.get_user_dishes_history_by_period(
                 user_id=user_id,
@@ -36,12 +37,14 @@ class StatisticsUseCase:
         statistics = []
         async with self._db as db:
             for offset in range(30):
-                current_date_start = start_date + timedelta(days=offset)
-                current_date_end = start_date + timedelta(days=offset) + timedelta(days=1) - timedelta(minutes=1)
+                now = datetime.now(settings.moscow_tz)
+                current_date_start = datetime.combine(now.date(), time.min, tzinfo=settings.moscow_tz)
+                current_date_end = datetime.combine(now.date(), time.max, tzinfo=settings.moscow_tz)
+
                 dishes: [DishSchema] = await db.get_user_dishes_history_by_period(
                     user_id=user_id,
                     date_from=current_date_start,
-                    date_to=current_date_end
+                    date_to=current_date_end,
                 )
                 if not dishes:
                     statistics.append(CountedStatisticsSchema(user_id=user_id,
