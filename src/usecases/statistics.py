@@ -13,8 +13,8 @@ class StatisticsUseCase:
 
     async def get_daily_statistics(self, user_id: int) -> CountedStatisticsSchema:
         now = datetime.now(settings.moscow_tz)
-        today_start = datetime.combine(now.date(), time.min, tzinfo=settings.moscow_tz)
-        today_end = datetime.combine(now.date(), time.max, tzinfo=settings.moscow_tz)
+        today_start = datetime.combine(now.date(), time.min).replace(tzinfo=settings.moscow_tz)
+        today_end = datetime.combine(now.date(), time.max).replace(tzinfo=settings.moscow_tz)
         logging.info(f"{today_start=}")
         logging.info(f"{today_end=}")
         async with self._db as db:
@@ -41,8 +41,8 @@ class StatisticsUseCase:
         async with self._db as db:
             for offset in range(30):
                 now = start_date + timedelta(days=offset)
-                current_date_start = datetime.combine(now, time.min, tzinfo=settings.moscow_tz)
-                current_date_end = datetime.combine(now, time.max, tzinfo=settings.moscow_tz)
+                current_date_start = datetime.combine(now, time.min).replace(tzinfo=settings.moscow_tz)
+                current_date_end = datetime.combine(now, time.max).replace(tzinfo=settings.moscow_tz)
 
                 dishes: [DishSchema] = await db.get_user_dishes_history_by_period(
                     user_id=user_id,
