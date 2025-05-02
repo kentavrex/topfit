@@ -14,6 +14,8 @@ class StatisticsUseCase:
         now = datetime.now(settings.moscow_tz)
         today_start = datetime.combine(now.date(), time.min, tzinfo=settings.moscow_tz)
         today_end = datetime.combine(now.date(), time.max, tzinfo=settings.moscow_tz)
+        print(f"{today_start=}")
+        print(f"{today_end=}")
         async with self._db as db:
             dishes_history: [DishSchema] = await db.get_user_dishes_history_by_period(
                 user_id=user_id,
