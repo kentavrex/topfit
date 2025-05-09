@@ -49,7 +49,8 @@ jobs:
     - name: Install dependencies and pytest
       run: |
         uv venv
-        uv pip install pytest pytest-asyncio
+        uv pip install pytest pytest-asyncio &
+        uv pip install pytest pytest-mock
 
     - name: Run tests
       run: uv run pytest
