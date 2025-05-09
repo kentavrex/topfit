@@ -14,3 +14,12 @@ services:
     command: "sh ./entrypoint.sh"
     env_file: .env
 #    depends_on: [db]
+
+#  redis:
+#    image: redis:alpine
+#    container_name: redis
+#    ports:
+#      - "6379:6379"
+#    volumes:
+#      - redis-data:/data
+#    env_file: .env
