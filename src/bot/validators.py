@@ -5,7 +5,8 @@ def validate_height(value: str) -> float:
             return height
         raise ValueError
     except ValueError:
-        raise ValueError("Рост должен быть числом от 50 до 250 см.")
+        raise ValueError("Рост должен быть числом от 50 до 250 см.") from None
+
 
 def validate_weight(value: str) -> float:
     try:
@@ -14,7 +15,8 @@ def validate_weight(value: str) -> float:
             return weight
         raise ValueError
     except ValueError:
-        raise ValueError("Вес должен быть числом от 20 до 300 кг.")
+        raise ValueError("Вес должен быть числом от 20 до 300 кг.") from None
+
 
 def validate_age(value: str) -> int:
     try:
@@ -23,12 +25,14 @@ def validate_age(value: str) -> int:
             return age
         raise ValueError
     except ValueError:
-        raise ValueError("Возраст должен быть числом от 10 до 120 лет.")
+        raise ValueError("Возраст должен быть числом от 10 до 120 лет.") from None
+
 
 def validate_gender(value: str) -> bool:
     if value.lower() in ["м", "ж"]:
         return value.lower() == "м"
     raise ValueError("Введите 'м' (мужской) или 'ж' (женский).")
+
 
 def validate_goal(value: str) -> int:
     try:
@@ -37,4 +41,4 @@ def validate_goal(value: str) -> int:
             return goal_number
         raise ValueError
     except ValueError:
-        raise ValueError("Введите корректный номер цели.")
+        raise ValueError("Введите корректный номер цели.") from None

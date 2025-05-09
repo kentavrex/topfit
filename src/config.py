@@ -6,6 +6,7 @@ from pydantic_settings import BaseSettings
 
 load_dotenv()
 
+
 class DBConfig(BaseSettings):
     DB_HOST: str = ""
     DB_NAME: str = ""

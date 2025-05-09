@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timedelta, time
+from datetime import datetime, time, timedelta
 from decimal import Decimal
 
 from config import settings
@@ -27,10 +27,10 @@ class StatisticsUseCase:
             user_id=user_id,
             valid_from_dt=today_start,
             valid_to_dt=today_end,
-            protein=sum((stat.protein for stat in dishes_history), start=Decimal('0')),
-            fat=sum((stat.fat for stat in dishes_history), start=Decimal('0')),
-            carbohydrates=sum((stat.carbohydrates for stat in dishes_history), start=Decimal('0')),
-            calories=sum((stat.calories for stat in dishes_history), start=Decimal('0')),
+            protein=sum((stat.protein for stat in dishes_history), start=Decimal("0")),
+            fat=sum((stat.fat for stat in dishes_history), start=Decimal("0")),
+            carbohydrates=sum((stat.carbohydrates for stat in dishes_history), start=Decimal("0")),
+            calories=sum((stat.calories for stat in dishes_history), start=Decimal("0")),
         )
 
     async def get_monthly_statistics(self, user_id: int) -> list[CountedStatisticsSchema]:
@@ -50,20 +50,24 @@ class StatisticsUseCase:
                     valid_to_dt=current_date_end,
                 )
                 if not dishes:
-                    statistics.append(CountedStatisticsSchema(user_id=user_id,
-                                                              valid_from_dt=current_date_start,
-                                                              valid_to_dt=current_date_end))
+                    statistics.append(
+                        CountedStatisticsSchema(
+                            user_id=user_id, valid_from_dt=current_date_start, valid_to_dt=current_date_end
+                        )
+                    )
                     continue
 
-                statistics.append(CountedStatisticsSchema(
-                    user_id=user_id,
-                    valid_from_dt=current_date_start,
-                    valid_to_dt=current_date_end,
-                    protein=sum((d.protein for d in dishes), start=Decimal('0')),
-                    fat=sum((d.fat for d in dishes), start=Decimal('0')),
-                    carbohydrates=sum((d.carbohydrates for d in dishes), start=Decimal('0')),
-                    calories=sum((d.calories for d in dishes), start=Decimal('0')),
-                ))
+                statistics.append(
+                    CountedStatisticsSchema(
+                        user_id=user_id,
+                        valid_from_dt=current_date_start,
+                        valid_to_dt=current_date_end,
+                        protein=sum((d.protein for d in dishes), start=Decimal("0")),
+                        fat=sum((d.fat for d in dishes), start=Decimal("0")),
+                        carbohydrates=sum((d.carbohydrates for d in dishes), start=Decimal("0")),
+                        calories=sum((d.calories for d in dishes), start=Decimal("0")),
+                    )
+                )
 
         return statistics
 

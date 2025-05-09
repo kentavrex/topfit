@@ -4,10 +4,10 @@ import logging
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters.command import Command
 
+from bot.api import router
 from bot.auth import validate_admin
 from bot.keyboards import admin_kb, user_kb
 from bot.middleware import SaveUserMiddleware
-from bot.api import router
 from config import settings
 from usecases.errors import ForbiddenError
 

@@ -3,11 +3,11 @@ from abc import ABC, abstractmethod
 from typing import Self
 
 from usecases.schemas import (
-    UserSchema,
     DishData,
     DishSchema,
     NutritionData,
     NutritionSchema,
+    UserSchema,
 )
 
 
@@ -32,7 +32,7 @@ class DBRepositoryInterface(ABC):
 
     @abstractmethod
     async def get_user_dishes_history_by_period(
-            self, user_id: int, valid_from_dt: datetime.datetime, valid_to_dt: datetime.datetime
+        self, user_id: int, valid_from_dt: datetime.datetime, valid_to_dt: datetime.datetime
     ) -> list[DishSchema]: ...
 
     @abstractmethod

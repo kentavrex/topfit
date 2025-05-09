@@ -42,6 +42,7 @@ ignore = [
 # Расширенное игнорирование для отдельных файлов
 [lint.extend-per-file-ignores]
 "__init__.py" = ["E402", "F401"] # Игнорирование ошибок импорта
+"src/repositories/gigachat/gigachat_client.py" = ["W291"]
 
 
 [format]

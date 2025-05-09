@@ -6,7 +6,7 @@ import ffmpeg
 import speech_recognition
 
 from usecases.errors import AudioToTextError
-from usecases.interfaces import DBRepositoryInterface, AIClientInterface
+from usecases.interfaces import AIClientInterface, DBRepositoryInterface
 from usecases.schemas import DishData, DishSchema
 
 
@@ -46,8 +46,7 @@ class DishRecognitionUseCase:
         output_audio = io.BytesIO()
 
         process = (
-            ffmpeg
-            .input("pipe:0", format="ogg")
+            ffmpeg.input("pipe:0", format="ogg")
             .output("pipe:1", format="wav")
             .run_async(pipe_stdin=True, pipe_stdout=True, pipe_stderr=True)
         )

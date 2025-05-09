@@ -1,8 +1,8 @@
 from decimal import Decimal
 
 from usecases.errors import UserNutritionNotSetError
-from usecases.interfaces import DBRepositoryInterface, AIClientInterface
-from usecases.schemas import UserSchema, NutritionGoalSchema, GoalType, NutritionSchema, NutritionData
+from usecases.interfaces import AIClientInterface, DBRepositoryInterface
+from usecases.schemas import GoalType, NutritionData, NutritionGoalSchema, NutritionSchema, UserSchema
 
 
 class UsersUseCase:
@@ -65,7 +65,7 @@ class UsersUseCase:
             calories=round(Decimal(daily_calories), 1),
             protein=round(Decimal(protein), 1),
             fat=round(Decimal(fat), 1),
-            carbohydrates=round(Decimal(carbs), 1)
+            carbohydrates=round(Decimal(carbs), 1),
         )
 
     def __calculate_nutrition_goal(self, goal_data: NutritionGoalSchema) -> NutritionData:

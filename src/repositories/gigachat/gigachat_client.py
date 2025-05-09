@@ -1,17 +1,17 @@
+import asyncio
 import json
 import logging
 import re
 import ssl
-import time
 from functools import wraps
-
-import httpx
 from typing import Self
 
-from usecases.errors import NotFoundError, MaxRetryError
-from usecases.interfaces import AIClientInterface
+import httpx
+
 from config import GigachatConfig
-from usecases.schemas import DishRecommendation, DishData
+from usecases.errors import MaxRetryError, NotFoundError
+from usecases.interfaces import AIClientInterface
+from usecases.schemas import DishData, DishRecommendation
 
 
 def retry(retry_num: int = 3, retry_sleep_sec: int = 2):
@@ -21,8 +21,10 @@ def retry(retry_num: int = 3, retry_sleep_sec: int = 2):
             for attempt in range(retry_num):
                 try:
                     if attempt != 0:
-                        kwargs['additional_message'] = ("Ответ должен быть в формате JSON и в формате ответа из примера. "
-                                                        "Пожалуйста, отправь данные снова, но строго в формате JSON.")
+                        kwargs["additional_message"] = (
+                            "Ответ должен быть в формате JSON и в формате ответа из примера. "
+                            "Пожалуйста, отправь данные снова, но строго в формате JSON."
+                        )
                     return await func(*args, **kwargs)
                 except json.JSONDecodeError as e:
                     logging.error(f"Ошибка в ответе от AI client (JSON Decode Error): {e}")
@@ -31,10 +33,10 @@ def retry(retry_num: int = 3, retry_sleep_sec: int = 2):
 
                 if attempt < retry_num - 1:
                     logging.error(f"Попытка {attempt + 1} не удалась.")
-                    time.sleep(retry_sleep_sec)
+                    await asyncio.sleep(retry_sleep_sec)
                 else:
                     logging.error(f"Не удалось выполнить {func.__name__} после {retry_num} попыток")
-                    raise MaxRetryError(f'Превышено максимальное количество попыток для {func.__name__}')
+                    raise MaxRetryError(f"Превышено максимальное количество попыток для {func.__name__}")
             return None
 
         return wrapper
@@ -56,15 +58,14 @@ class GigachatClient(AIClientInterface):
         await self._update_access_token()
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
-        ...
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None: ...
 
     async def _update_access_token(self) -> None:
         url = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth"
         headers = {
             "Content-Type": "application/x-www-form-urlencoded",
             "Accept": "application/json",
-            'RqUID': 'b5cd3af6-8c96-457e-b807-641226b0040e',
+            "RqUID": "b5cd3af6-8c96-457e-b807-641226b0040e",
             "Authorization": f"Basic {self._config.GIGACHAT_API_KEY}",
         }
         payload = {"scope": "GIGACHAT_API_PERS"}
@@ -75,11 +76,13 @@ class GigachatClient(AIClientInterface):
 
         self._access_token = response.json()["access_token"]
 
-    async def _send_request(self,
-                            system_message: str,
-                            user_message: str | None = None,
-                            attachments: list[str] | None = None,
-                            additional_message: str = '') -> str:
+    async def _send_request(
+        self,
+        system_message: str,
+        user_message: str | None = None,
+        attachments: list[str] | None = None,
+        additional_message: str = "",
+    ) -> str:
         """Отправляет запрос в GigaChat API для генерации ответа."""
         if not self._access_token:
             await self._update_access_token()
@@ -109,7 +112,6 @@ class GigachatClient(AIClientInterface):
         else:
             payload["model"] = "GigaChat"
 
-        print(f"payload={payload}")
         async with httpx.AsyncClient(verify=self._ssl_context) as client:
             response = await client.post(url, headers=headers, content=json.dumps(payload))
         response.raise_for_status()
@@ -120,27 +122,25 @@ class GigachatClient(AIClientInterface):
         headers = {
             "Authorization": f"Bearer {self._access_token}",
         }
-        files = {
-            "file": ("file_name", file_bytes, mime_type)
-        }
+        files = {"file": ("file_name", file_bytes, mime_type)}
         data = {"purpose": "general"}
         try:
             async with httpx.AsyncClient(verify=self._ssl_context) as client:
                 response = await client.post(url, headers=headers, files=files, data=data)
 
             if response.status_code == 200:
-                return response.json()['id']
+                return response.json()["id"]
             else:
-                print(f"Ошибка: {response.status_code}, {response.text}")
+                logging.error(f"Ошибка: {response.status_code}, {response.text}")
                 return None
         except httpx.RequestError as e:
-            print(f"Ошибка при отправке запроса: {e}")
+            logging.error(f"Ошибка при отправке запроса: {e}")
             return None
 
     @staticmethod
     async def _parse_json_response(message_response: str) -> dict:
         logging.debug(f"Received message response: {message_response}")
-        match = re.search(r'```json\s*\n(.*?)\n\s*```', message_response, re.DOTALL)
+        match = re.search(r"```json\s*\n(.*?)\n\s*```", message_response, re.DOTALL)
         if match:
             try:
                 return json.loads(match.group(1))
@@ -150,9 +150,8 @@ class GigachatClient(AIClientInterface):
         raise NotFoundError("Not found json in AI client response")
 
     @retry()
-    async def recognize_meal_by_text(self, message: str, additional_message: str = '') -> DishData:
-        system_message = (
-        """
+    async def recognize_meal_by_text(self, message: str, additional_message: str = "") -> DishData:
+        system_message = """
         Посчитай КБЖУ блюда.  
         Верни ответ строго в формате JSON, содержащий следующие поля:
         - "name" (str) - название 
@@ -165,24 +164,22 @@ class GigachatClient(AIClientInterface):
         {"name": "Ризотто с курицей, "protein": 25.3, "fat": 10.2, "carbohydrates": 150.2, "calories": 400.1}
         ```
         """
+        response = await self._send_request(
+            system_message=system_message, user_message=message, additional_message=additional_message
         )
-        response = await self._send_request(system_message=system_message,
-                                            user_message=message,
-                                            additional_message=additional_message)
         response_parsed = await self._parse_json_response(response)
         return DishData(**response_parsed)
 
     @retry()
     async def recognize_meal_by_image(
-            self, dish_bytes: bytes, mime_type: str, additional_message: str = ''
+        self, dish_bytes: bytes, mime_type: str, additional_message: str = ""
     ) -> DishData:
         file_id = await self._upload_gigachat_file(file_bytes=dish_bytes, mime_type=mime_type)
         if not file_id:
             logging.error("Ошибка загрузки файла")
             raise
 
-        system_message = (
-        """
+        system_message = """
         Найди в тексте ВСЮ ЕДУ и посчитай КБЖУ.  
         Верни ответ строго в формате JSON, содержащий следующие поля:
         - "name" (str) - название 
@@ -195,23 +192,23 @@ class GigachatClient(AIClientInterface):
         {"name": "Ризотто с курицей, "protein": 25.3, "fat": 10.2, "carbohydrates": 150.2, "calories": 400.1}
         ```
         """
-        )
         find_meal_text = "Что из еды представлено, просто перечисли."
-        photo_recognize_text = await self._send_request(system_message=find_meal_text,
-                                                        user_message=find_meal_text,
-                                                        attachments=[file_id],
-                                                        additional_message=additional_message)
+        photo_recognize_text = await self._send_request(
+            system_message=find_meal_text,
+            user_message=find_meal_text,
+            attachments=[file_id],
+            additional_message=additional_message,
+        )
         logging.info(f"Meal recognized: {photo_recognize_text}")
-        response = await self._send_request(system_message=system_message,
-                                            user_message=photo_recognize_text,
-                                            additional_message=additional_message)
+        response = await self._send_request(
+            system_message=system_message, user_message=photo_recognize_text, additional_message=additional_message
+        )
         response_parsed = await self._parse_json_response(response)
         return DishData(**response_parsed)
 
     @retry()
-    async def recognize_meal_by_text_from_audio(self, message: str, additional_message: str = '') -> DishData:
-        system_message = (
-        """
+    async def recognize_meal_by_text_from_audio(self, message: str, additional_message: str = "") -> DishData:
+        system_message = """
         Найди в тексте ВСЮ ЕДУ и посчитай КБЖУ.  
         Верни ответ строго в формате JSON, содержащий следующие поля:
         - "name" (str) - название 
@@ -224,23 +221,21 @@ class GigachatClient(AIClientInterface):
         {"name": "Ризотто с курицей, "protein": 25.3, "fat": 10.2, "carbohydrates": 150.2, "calories": 400.1}
         ```
         """
-        )
         find_meal_text = "Что из еды представлено, просто перечисли."
         logging.info(f"Audio text: {message}")
-        meal_recognize_text = await self._send_request(system_message=find_meal_text,
-                                                       user_message=message,
-                                                       additional_message=additional_message)
+        meal_recognize_text = await self._send_request(
+            system_message=find_meal_text, user_message=message, additional_message=additional_message
+        )
         logging.info(f"Meal recognized: {meal_recognize_text}")
-        response = await self._send_request(system_message=system_message,
-                                            user_message=meal_recognize_text,
-                                            additional_message=additional_message)
+        response = await self._send_request(
+            system_message=system_message, user_message=meal_recognize_text, additional_message=additional_message
+        )
         response_parsed = await self._parse_json_response(response)
         return DishData(**response_parsed)
 
     @retry()
-    async def get_dish_recommendation(self, message: str, additional_message: str = '') -> DishRecommendation:
-        system_message = (
-            """Тебе нужно предложить пользователю блюдо на основании следующих данных:
+    async def get_dish_recommendation(self, message: str, additional_message: str = "") -> DishRecommendation:
+        system_message = """Тебе нужно предложить пользователю блюдо на основании следующих данных:
             1. Блюдо не должно сильно превышать желаемый КБЖУ (из role user content) на 1 порцию.  
             2. Список прошлых блюд пользователя с их КБЖУ — эта информация поможет понять вкусовые предпочтения 
             пользователя.
@@ -273,9 +268,8 @@ class GigachatClient(AIClientInterface):
             }
             ```
             """
+        response = await self._send_request(
+            system_message=system_message, user_message=message, additional_message=additional_message
         )
-        response = await self._send_request(system_message=system_message,
-                                            user_message=message,
-                                            additional_message=additional_message)
         response_parsed = await self._parse_json_response(response)
         return DishRecommendation(**response_parsed)

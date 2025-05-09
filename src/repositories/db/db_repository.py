@@ -1,13 +1,14 @@
 import datetime
 from typing import Self
 
-from sqlalchemy import select, update, and_
+from sqlalchemy import and_, select, update
 from sqlalchemy.ext.asyncio import async_sessionmaker
 from sqlalchemy.orm import joinedload
 
 from usecases.interfaces import DBRepositoryInterface
-from usecases.schemas import UserSchema, DishData, DishSchema, NutritionData, NutritionSchema
-from .models import User, Statistics, Dish, RecommendationHistory, Nutrition
+from usecases.schemas import DishData, DishSchema, NutritionData, NutritionSchema, UserSchema
+
+from .models import Dish, Nutrition, RecommendationHistory, Statistics, User
 
 
 class DBRepository(DBRepositoryInterface):
@@ -32,10 +33,7 @@ class DBRepository(DBRepositoryInterface):
         await self._session.flush()
 
     async def get_users(self) -> list[UserSchema]:
-        return [
-            UserSchema.model_validate(u)
-            for u in (await self._session.scalars(select(User))).all()
-        ]
+        return [UserSchema.model_validate(u) for u in (await self._session.scalars(select(User))).all()]
 
     async def save_dish(self, dish_data: DishData) -> DishSchema:
         nutrition = Nutrition(**dish_data.model_dump(exclude={"name"}))
@@ -46,12 +44,14 @@ class DBRepository(DBRepositoryInterface):
         self._session.add(dish)
         await self._session.flush()
 
-        return DishSchema(id=dish.id,
-                          name=dish.name,
-                          protein=dish.nutrition.protein,
-                          fat=dish.nutrition.fat,
-                          carbohydrates=dish.nutrition.carbohydrates,
-                          calories=dish.nutrition.calories)
+        return DishSchema(
+            id=dish.id,
+            name=dish.name,
+            protein=dish.nutrition.protein,
+            fat=dish.nutrition.fat,
+            carbohydrates=dish.nutrition.carbohydrates,
+            calories=dish.nutrition.calories,
+        )
 
     async def add_statistics_obj(self, user_id: int, dish_id: int, like: bool = True) -> None:
         statistics_obj = Statistics(
@@ -63,16 +63,14 @@ class DBRepository(DBRepositoryInterface):
         await self._session.flush()
 
     async def get_user_dishes_history_by_period(
-            self, user_id: int, valid_from_dt: datetime.datetime, valid_to_dt: datetime.datetime
+        self, user_id: int, valid_from_dt: datetime.datetime, valid_to_dt: datetime.datetime
     ) -> list[DishSchema]:
         query = (
             select(Statistics)
             .filter(Statistics.user_id == user_id)
             .filter(Statistics.created_at >= valid_from_dt)
             .filter(Statistics.created_at <= valid_to_dt)
-        ).options(
-            joinedload(Statistics.dish).joinedload(Dish.nutrition)
-        )
+        ).options(joinedload(Statistics.dish).joinedload(Dish.nutrition))
         statistics = await self._session.scalars(query)
 
         return [
@@ -82,17 +80,14 @@ class DBRepository(DBRepositoryInterface):
                 protein=stat.dish.nutrition.protein,
                 fat=stat.dish.nutrition.fat,
                 carbohydrates=stat.dish.nutrition.carbohydrates,
-                calories=stat.dish.nutrition.calories
+                calories=stat.dish.nutrition.calories,
             )
             for stat in statistics
         ]
 
     async def get_user_dishes_history(self, user_id: int, limit: int = 50) -> list[str]:
         query = (
-            select(Statistics)
-            .filter(Statistics.user_id == user_id)
-            .limit(limit)
-            .options(joinedload(Statistics.dish))
+            select(Statistics).filter(Statistics.user_id == user_id).limit(limit).options(joinedload(Statistics.dish))
         )
 
         statistics = await self._session.scalars(query)
@@ -110,20 +105,12 @@ class DBRepository(DBRepositoryInterface):
         return NutritionSchema.model_validate(nutrition)
 
     async def set_user_nutrition_goal(self, user_id: int, nutrition_goal_id: int) -> None:
-        query = (
-            update(User)
-            .where(and_(User.telegram_id == user_id))
-            .values({"nutrition_goal_id": nutrition_goal_id})
-        )
+        query = update(User).where(and_(User.telegram_id == user_id)).values({"nutrition_goal_id": nutrition_goal_id})
         await self._session.execute(query)
         await self._session.flush()
 
     async def get_user_nutrition_goal(self, user_id: int) -> NutritionSchema | None:
-        query = (
-            select(User)
-            .filter(User.telegram_id == user_id)
-            .options(joinedload(User.nutrition_goal))
-        )
+        query = select(User).filter(User.telegram_id == user_id).options(joinedload(User.nutrition_goal))
         user = await self._session.scalar(query)
         if user and user.nutrition_goal:
             return NutritionSchema.model_validate(user.nutrition_goal)

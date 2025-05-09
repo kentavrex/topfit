@@ -3,8 +3,8 @@ from decimal import Decimal
 
 from config import settings
 from usecases.errors import UserNutritionNotSetError
-from usecases.interfaces import DBRepositoryInterface, AIClientInterface
-from usecases.schemas import DishData, DishRecommendation, NutritionSchema, DishSchema, CountedStatisticsSchema
+from usecases.interfaces import AIClientInterface, DBRepositoryInterface
+from usecases.schemas import CountedStatisticsSchema, DishData, DishRecommendation, DishSchema, NutritionSchema
 
 
 class RecommendationUseCase:
@@ -29,15 +29,20 @@ class RecommendationUseCase:
             user_id=user_id,
             protein=max(user_nutrition_goal.protein - sum(stat.protein for stat in dishes_history), Decimal(2)),
             fat=max(user_nutrition_goal.fat - sum(stat.fat for stat in dishes_history), Decimal(0)),
-            carbohydrates=max(user_nutrition_goal.carbohydrates - sum(stat.carbohydrates for stat in dishes_history),
-                              Decimal(10)),
+            carbohydrates=max(
+                user_nutrition_goal.carbohydrates - sum(stat.carbohydrates for stat in dishes_history), Decimal(10)
+            ),
             calories=max(user_nutrition_goal.calories - sum(stat.calories for stat in dishes_history), Decimal(300)),
         )
         if user_dishes_history:
-            return (f"Примерный (не точный) желаемый кбжу: {dish_nutrition_goal_text}. "
-                    f"История прошлых блюд: {", ".join(user_dishes_history)}")
-        return (f"Примерный (не точный) желаемый кбжу: {dish_nutrition_goal_text}. "
-                f"Истории прошлых блюд нет, просто порекомендуй что-нибудь вкусное.")
+            return (
+                f"Примерный (не точный) желаемый кбжу: {dish_nutrition_goal_text}. "
+                f"История прошлых блюд: {", ".join(user_dishes_history)}"
+            )
+        return (
+            f"Примерный (не точный) желаемый кбжу: {dish_nutrition_goal_text}. "
+            f"Истории прошлых блюд нет, просто порекомендуй что-нибудь вкусное."
+        )
 
     async def generate_recommendation(self, user_id: int) -> DishRecommendation:
         dish_recommendation_text = await self._get_dish_recommendation_message_text(user_id=user_id)

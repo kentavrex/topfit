@@ -1,7 +1,7 @@
 import datetime
 from decimal import Decimal
 
-from sqlalchemy import BigInteger, ForeignKey, Numeric, String, TIMESTAMP
+from sqlalchemy import TIMESTAMP, BigInteger, ForeignKey, Numeric, String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from config import current_moscow_datetime
@@ -20,8 +20,10 @@ class Nutrition(Base):
     calories: Mapped[Decimal] = mapped_column(Numeric(6, 1), nullable=False)
 
     def __repr__(self) -> str:
-        return (f"<Nutrition protein={self.protein} fat={self.fat} "
-                f"carbohydrates={self.carbohydrates} calories={self.calories}>")
+        return (
+            f"<Nutrition protein={self.protein} fat={self.fat} "
+            f"carbohydrates={self.carbohydrates} calories={self.calories}>"
+        )
 
 
 class Dish(Base):
@@ -63,7 +65,7 @@ class Statistics(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.telegram_id"))
     dish_id: Mapped[int] = mapped_column(ForeignKey("dishes.id"))
     created_at: Mapped[datetime.datetime] = mapped_column(TIMESTAMP(timezone=True), default=current_moscow_datetime)
-    like: Mapped[bool]  = mapped_column(default=True) # Оценка блюда (нравится/не нравится)
+    like: Mapped[bool] = mapped_column(default=True)  # Оценка блюда (нравится/не нравится)
 
     user: Mapped["User"] = relationship(back_populates="statistics")
     dish: Mapped["Dish"] = relationship()

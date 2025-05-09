@@ -6,12 +6,12 @@ import magic
 from aiogram import F, Router, types
 from aiogram.fsm.context import FSMContext
 
-from bot.keyboards import goal_update_kb, goal_set_kb, user_kb, statistics_set_kb
-from bot.validators import validate_height, validate_weight, validate_age, validate_gender, validate_goal
+from bot.keyboards import goal_set_kb, goal_update_kb, statistics_set_kb, user_kb
 from bot.states import AddMealStates, SetNutritionGoalStates
+from bot.validators import validate_age, validate_gender, validate_goal, validate_height, validate_weight
 from dependencies import container
-from usecases import UsersUseCase, DishRecognitionUseCase, RecommendationUseCase, StatisticsUseCase
-from usecases.errors import UserNutritionNotSetError, AudioToTextError, MaxRetryError
+from usecases import DishRecognitionUseCase, RecommendationUseCase, StatisticsUseCase, UsersUseCase
+from usecases.errors import AudioToTextError, MaxRetryError, UserNutritionNotSetError
 from usecases.schemas import GoalType, NutritionGoalSchema
 
 router = Router()
@@ -65,8 +65,7 @@ async def process_dish_image(message: types.Message, state: FSMContext):
         mime = magic.Magic(mime=True)
         mime_type = mime.from_buffer(file_bytes)
         logging.info(f"mime_type={mime_type}")
-        dish_data = await dish_recognition_uc.recognize_dish_from_image(dish_bytes=file_bytes,
-                                                                        mime_type=mime_type)
+        dish_data = await dish_recognition_uc.recognize_dish_from_image(dish_bytes=file_bytes, mime_type=mime_type)
 
         await send_dish_info(message, dish_data)
         await processing_message.edit_text("✅ Подсчет завершен!")
@@ -138,15 +137,14 @@ async def get_daily_statistics(message: types.Message):
         f"🍞 **Углеводы**: {counted_statistics.carbohydrates:.1f} г\n"
         f"🔥 **Калории**: {counted_statistics.calories:.1f} ккал\n",
         parse_mode="Markdown",
-        reply_markup = statistics_set_kb,
+        reply_markup=statistics_set_kb,
     )
 
 
 @router.message(F.text.lower() == "статистика за месяц")
 async def get_monthly_statistics(message: types.Message):
     processing_message = await message.answer(
-        f"⌛ **Подсчет статистики за последние 30 дней начался..**\n",
-        parse_mode="Markdown"
+        "⌛ **Подсчет статистики за последние 30 дней начался..**\n", parse_mode="Markdown"
     )
     user_id = message.from_user.id
     uc: StatisticsUseCase = container.resolve(StatisticsUseCase)
@@ -154,11 +152,13 @@ async def get_monthly_statistics(message: types.Message):
     month_data = []
     for stat in counted_statistics:
         if stat.calories > 0:
-            entry = (f"{stat.valid_from_dt.strftime('%d.%m')}: "
-                     f"{stat.calories:.1f}/"
-                     f"{stat.protein:.1f}/"
-                     f"{stat.fat:.1f}/"
-                     f"{stat.carbohydrates:.1f}")
+            entry = (
+                f"{stat.valid_from_dt.strftime('%d.%m')}: "
+                f"{stat.calories:.1f}/"
+                f"{stat.protein:.1f}/"
+                f"{stat.fat:.1f}/"
+                f"{stat.carbohydrates:.1f}"
+            )
         else:
             entry = f"{stat.valid_from_dt.strftime('%d.%m')}: -"
         month_data.append(entry)
@@ -168,41 +168,13 @@ async def get_monthly_statistics(message: types.Message):
     await message.answer(text, parse_mode="Markdown")
 
 
-@router.message(F.text.lower() == "цель")
-async def handle_goal(message: types.Message):
-    user_id = message.from_user.id
-    uc: UsersUseCase = container.resolve(UsersUseCase)
-
-    try:
-        nutrition = await uc.get_nutrition_goal(user_id=user_id)
-        await message.answer(
-            f"📅 **Ваша дневная цель КБЖУ**:\n"
-            f"🥩 **Белки**: {nutrition.protein:.1f} г\n"
-            f"🧈 **Жиры**: {nutrition.fat:.1f} г\n"
-            f"🍞 **Углеводы**: {nutrition.carbohydrates:.1f} г\n"
-            f"🔥 **Калории**: {nutrition.calories:.1f} ккал\n",
-            parse_mode="Markdown",
-            reply_markup=goal_update_kb,
-        )
-    except UserNutritionNotSetError:
-        await message.answer(
-            "У вас ещё нет заданной цели. Задайте её сейчас, чтобы получать рекомендации.",
-            reply_markup=goal_set_kb,
-        )
-
-
-@router.message(F.text.lower() == "обновить цель")
-async def update_nutrition_goal(message: types.Message, state: FSMContext):
-    await set_nutrition_goal(message=message, state=state)
-
-
 @router.message(F.text.lower() == "ai рекомендация")
 async def generate_user_dish_recommendation(message: types.Message):
     processing_message = await message.answer(
-        f"🍽 **Рекомендуемое блюдо**\n"
-        f"Мы учитываем вашу дневную цель и статистику по КБЖУ, а также предпочтения, основанные на истории ваших блюд, "
+        "🍽 **Рекомендуемое блюдо**\n"
+        "Мы учитываем вашу дневную цель и статистику по КБЖУ, а также предпочтения, основанные на истории ваших блюд, "
         "чтобы предложить вам блюдо, которое вам точно понравится и будет вписываться в дневную норму.",
-        parse_mode="Markdown"
+        parse_mode="Markdown",
     )
     user_id = message.from_user.id
     uc: RecommendationUseCase = container.resolve(RecommendationUseCase)
@@ -214,10 +186,10 @@ async def generate_user_dish_recommendation(message: types.Message):
     except UserNutritionNotSetError:
         await message.bot.delete_message(chat_id=message.chat.id, message_id=processing_message.message_id)
         await message.answer(
-        "Персональная рекомендация блюда AI рассчитывается "
-             "на основе вашей цели по КБЖУ.\n"
-             "Вам необходимо задать **Цель** в панели Меню",
-             parse_mode="Markdown"
+            "Персональная рекомендация блюда AI рассчитывается "
+            "на основе вашей цели по КБЖУ.\n"
+            "Вам необходимо задать **Цель** в панели Меню",
+            parse_mode="Markdown",
         )
         return
     servings_count = recommendation.servings_count
@@ -228,12 +200,12 @@ async def generate_user_dish_recommendation(message: types.Message):
         f"• Жиры: {(recommendation.fat / servings_count):.1f} г\n"
         f"• Углеводы: {(recommendation.carbohydrates / servings_count):.1f} г\n"
         f"• Калории: {(recommendation.calories / servings_count):.1f} ккал\n",
-        parse_mode="Markdown"
+        parse_mode="Markdown",
     )
     await message.answer(
         f"📝 **Рецепт на кол-во блюд - {recommendation.servings_count}**:\n{recommendation.receipt}\n\n"
         "Приятного аппетита! 😋",
-        parse_mode="Markdown"
+        parse_mode="Markdown",
     )
 
 
@@ -281,25 +253,28 @@ async def process_height(message: types.Message, state: FSMContext):
     except ValueError as e:
         await message.answer(str(e))
 
+
 @router.message(SetNutritionGoalStates.waiting_weight, F.text)
 async def process_weight(message: types.Message, state: FSMContext):
     try:
         weight = validate_weight(message.text)
         await state.update_data(weight=weight)
-        await message.answer(f"Возраст:")
+        await message.answer("Возраст:")
         await state.set_state(SetNutritionGoalStates.waiting_age)
     except ValueError as e:
         await message.answer(str(e))
+
 
 @router.message(SetNutritionGoalStates.waiting_age, F.text)
 async def process_age(message: types.Message, state: FSMContext):
     try:
         age = validate_age(message.text)
         await state.update_data(age=age)
-        await message.answer(f"Выберите пол (м/ж):")
+        await message.answer("Выберите пол (м/ж):")
         await state.set_state(SetNutritionGoalStates.waiting_goal)
     except ValueError as e:
         await message.answer(str(e))
+
 
 @router.message(SetNutritionGoalStates.waiting_goal, F.text)
 async def process_gender(message: types.Message, state: FSMContext):
@@ -310,6 +285,7 @@ async def process_gender(message: types.Message, state: FSMContext):
         await state.set_state(SetNutritionGoalStates.waiting_gender)
     except ValueError as e:
         await message.answer(str(e))
+
 
 @router.message(SetNutritionGoalStates.waiting_gender, F.text)
 async def process_goal(message: types.Message, state: FSMContext):
@@ -322,11 +298,11 @@ async def process_goal(message: types.Message, state: FSMContext):
             weight=float(goal_data["weight"]),
             age=int(goal_data["age"]),
             is_male=goal_data["gender"],
-            nutrition_goal_type=GoalType.from_number(goal_number)
+            nutrition_goal_type=GoalType.from_number(goal_number),
         )
         uc: UsersUseCase = container.resolve(UsersUseCase)
         await uc.set_nutrition_goal(user_id=user_id, goal_data=goal_data)
-        await message.answer(f"Цель обновлена!", reply_markup=user_kb)
+        await message.answer("Цель обновлена!", reply_markup=user_kb)
         await state.clear()
     except ValueError as e:
         await message.answer(str(e))

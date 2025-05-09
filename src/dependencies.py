@@ -4,13 +4,12 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from config import DBConfig, GigachatConfig
 from repositories import DBRepository, GigachatClient
 from usecases import (
-    UsersUseCase,
     DishRecognitionUseCase,
     RecommendationUseCase,
     StatisticsUseCase,
+    UsersUseCase,
 )
-from usecases.interfaces import DBRepositoryInterface, AIClientInterface
-
+from usecases.interfaces import AIClientInterface, DBRepositoryInterface
 
 container = Container()
 db_config = DBConfig()
