@@ -36,8 +36,8 @@ class SaveUserMiddleware(BaseMiddleware):
         return (
             f"Новый пользователь бота:\n"
             f"ID: {user.telegram_id}\n"
-            f"Имя: {user.first_name} {user.last_name or ""}"
-            f"\n\n{"" + user.username or ""}"
+            f"Имя: {user.first_name} {user.last_name or ''}"
+            f"\n\n{'' + user.username or ''}"
         )
 
     @staticmethod

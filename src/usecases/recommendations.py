@@ -37,7 +37,7 @@ class RecommendationUseCase:
         if user_dishes_history:
             return (
                 f"Примерный (не точный) желаемый кбжу: {dish_nutrition_goal_text}. "
-                f"История прошлых блюд: {", ".join(user_dishes_history)}"
+                f"История прошлых блюд: {', '.join(user_dishes_history)}"
             )
         return (
             f"Примерный (не точный) желаемый кбжу: {dish_nutrition_goal_text}. "
