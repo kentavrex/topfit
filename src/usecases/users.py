@@ -46,12 +46,14 @@ class UsersUseCase:
         """Рассчитываем дневную норму калорий на основе цели"""
         base = bmr
         match goal_data.activity_type:
-            case ActivityType.MINIMUM:
+            case ActivityType.WITHOUT_ACTIVITY:
                 base *= 1.2
-            case ActivityType.AVERAGE:
+            case ActivityType.EASY:
+                base *= 1.375
+            case ActivityType.MEDIUM:
                 base *= 1.55
-            case ActivityType.MAXIMUM:
-                base *= 1.7
+            case ActivityType.INTENSIVE:
+                base *= 1.725
             case _:
                 raise ValueError("Некорректное значение activity_number")
 

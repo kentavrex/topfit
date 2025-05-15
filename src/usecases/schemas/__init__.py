@@ -11,9 +11,10 @@ class CustomBaseModel(BaseModel):
 
 
 class ActivityType(Enum):
-    MINIMUM = "Минимальная (спортзал реже 1 раза в неделю)"
-    AVERAGE = "Умеренная (спортзал 1 раз в неделю)"
-    MAXIMUM = "Высокая (спортзал более 2 раз в неделю)"
+    WITHOUT_ACTIVITY = "Отсутствие физических нагрузок"
+    EASY = "Легкая (физ активность 1-3 раза в неделю)"
+    MEDIUM = "Умеренная (физ активность 3-5 раз в неделю)"
+    INTENSIVE = "Интенсивная (физ активность более 5 раз в неделю)"
 
     @classmethod
     def get_activity_options(cls):

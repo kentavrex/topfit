@@ -22,7 +22,7 @@ async def test_set_nutrition_goal(mocker):
             height=175,
             age=25,
             is_male=True,
-            activity_type=ActivityType.MAXIMUM,
+            activity_type=ActivityType.INTENSIVE,
             nutrition_goal_type=GoalType.SUPPORT_FORM,
         ),
     )
