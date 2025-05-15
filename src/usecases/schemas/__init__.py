@@ -10,6 +10,20 @@ class CustomBaseModel(BaseModel):
         from_attributes = True
 
 
+class ActivityType(Enum):
+    MINIMUM = "Минимальная (спортзал реже 1 раза в неделю)"
+    AVERAGE = "Умеренная (спортзал 1 раз в неделю)"
+    MAXIMUM = "Высокая (спортзал более 2 раз в неделю)"
+
+    @classmethod
+    def get_activity_options(cls):
+        return "\n".join(f"{index + 1} - {goal.value}" for index, goal in enumerate(cls))
+
+    @classmethod
+    def from_number(cls, number: int):
+        return list(cls)[number - 1]
+
+
 class GoalType(Enum):
     LOSE_WEIGHT = "Сброс веса"
     SUPPORT_FORM = "Поддержка формы"
@@ -37,12 +51,13 @@ class NutritionGoalSchema(CustomBaseModel):
     weight: float
     age: int
     is_male: bool
+    activity_type: ActivityType
     nutrition_goal_type: GoalType
 
     def __str__(self):
         return (
             f"Height: {self.height}, Weight: {self.weight}, Age: {self.age},"
-            f" IsMail: {self.is_male} Goal: {self.nutrition_goal_type.value}"
+            f" IsMail: {self.is_male} Activity: {self.activity_type.value} Goal: {self.nutrition_goal_type.value}"
         )
 
 

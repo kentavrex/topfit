@@ -8,11 +8,11 @@ from aiogram.fsm.context import FSMContext
 
 from bot.keyboards import goal_set_kb, goal_update_kb, statistics_set_kb, user_kb
 from bot.states import AddMealStates, SetNutritionGoalStates
-from bot.validators import validate_age, validate_gender, validate_goal, validate_height, validate_weight
+from bot.validators import GoalValidator
 from dependencies import container
 from usecases import DishRecognitionUseCase, RecommendationUseCase, StatisticsUseCase, UsersUseCase
 from usecases.errors import AudioToTextError, MaxRetryError, UserNutritionNotSetError
-from usecases.schemas import GoalType, NutritionGoalSchema
+from usecases.schemas import GoalType, NutritionGoalSchema, ActivityType
 
 router = Router()
 
@@ -246,7 +246,7 @@ async def set_nutrition_goal(message: types.Message, state: FSMContext):
 @router.message(SetNutritionGoalStates.waiting_height, F.text)
 async def process_height(message: types.Message, state: FSMContext):
     try:
-        height = validate_height(message.text)
+        height = GoalValidator.validate_height(message.text)
         await state.update_data(height=height)
         await message.answer("Вес (кг):")
         await state.set_state(SetNutritionGoalStates.waiting_weight)
@@ -257,7 +257,7 @@ async def process_height(message: types.Message, state: FSMContext):
 @router.message(SetNutritionGoalStates.waiting_weight, F.text)
 async def process_weight(message: types.Message, state: FSMContext):
     try:
-        weight = validate_weight(message.text)
+        weight = GoalValidator.validate_weight(message.text)
         await state.update_data(weight=weight)
         await message.answer("Возраст:")
         await state.set_state(SetNutritionGoalStates.waiting_age)
@@ -268,29 +268,40 @@ async def process_weight(message: types.Message, state: FSMContext):
 @router.message(SetNutritionGoalStates.waiting_age, F.text)
 async def process_age(message: types.Message, state: FSMContext):
     try:
-        age = validate_age(message.text)
+        age = GoalValidator.validate_age(message.text)
         await state.update_data(age=age)
         await message.answer("Выберите пол (м/ж):")
-        await state.set_state(SetNutritionGoalStates.waiting_goal)
-    except ValueError as e:
-        await message.answer(str(e))
-
-
-@router.message(SetNutritionGoalStates.waiting_goal, F.text)
-async def process_gender(message: types.Message, state: FSMContext):
-    try:
-        gender = validate_gender(message.text)
-        await state.update_data(gender=gender)
-        await message.answer(f"Выберите номер вашей цели:\n{GoalType.get_goal_options()}")
         await state.set_state(SetNutritionGoalStates.waiting_gender)
     except ValueError as e:
         await message.answer(str(e))
 
 
 @router.message(SetNutritionGoalStates.waiting_gender, F.text)
+async def process_gender(message: types.Message, state: FSMContext):
+    try:
+        gender = GoalValidator.validate_gender(message.text)
+        await state.update_data(gender=gender)
+        await message.answer(f"Выберите уровень активности:\n{ActivityType.get_activity_options()}")
+        await state.set_state(SetNutritionGoalStates.waiting_activity)
+    except ValueError as e:
+        await message.answer(str(e))
+
+
+@router.message(SetNutritionGoalStates.waiting_activity, F.text)
+async def process_activity(message: types.Message, state: FSMContext):
+    try:
+        activity_number = GoalValidator.validate_activity(message.text)
+        await state.update_data(activity_number=activity_number)
+        await message.answer(f"Выберите номер вашей цели:\n{GoalType.get_goal_options()}")
+        await state.set_state(SetNutritionGoalStates.waiting_goal)
+    except ValueError as e:
+        await message.answer(str(e))
+
+
+@router.message(SetNutritionGoalStates.waiting_goal, F.text)
 async def process_goal(message: types.Message, state: FSMContext):
     try:
-        goal_number = validate_goal(message.text)
+        goal_number = GoalValidator.validate_goal(message.text)
         user_id = message.from_user.id
         goal_data = await state.get_data()
         goal_data = NutritionGoalSchema(
@@ -298,6 +309,7 @@ async def process_goal(message: types.Message, state: FSMContext):
             weight=float(goal_data["weight"]),
             age=int(goal_data["age"]),
             is_male=goal_data["gender"],
+            activity_type=ActivityType.from_number(goal_data["activity_number"]),
             nutrition_goal_type=GoalType.from_number(goal_number),
         )
         uc: UsersUseCase = container.resolve(UsersUseCase)

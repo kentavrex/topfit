@@ -13,7 +13,7 @@ class Base(DeclarativeBase): ...
 class Nutrition(Base):
     __tablename__ = "nutrition"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     protein: Mapped[Decimal] = mapped_column(Numeric(5, 1), nullable=False)
     fat: Mapped[Decimal] = mapped_column(Numeric(5, 1), nullable=False)
     carbohydrates: Mapped[Decimal] = mapped_column(Numeric(5, 1), nullable=False)
@@ -29,7 +29,7 @@ class Nutrition(Base):
 class Dish(Base):
     __tablename__ = "dishes"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     nutrition_id: Mapped[int] = mapped_column(ForeignKey("nutrition.id"))
 
@@ -42,7 +42,7 @@ class Dish(Base):
 class RecommendationHistory(Base):
     __tablename__ = "recommendation_history"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.telegram_id"))
     dish_id: Mapped[int] = mapped_column(ForeignKey("dishes.id"))
     created_at: Mapped[datetime.datetime] = mapped_column(TIMESTAMP(timezone=True), default=current_moscow_datetime)
@@ -61,7 +61,7 @@ class RecommendationHistory(Base):
 class Statistics(Base):
     __tablename__ = "statistics"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.telegram_id"))
     dish_id: Mapped[int] = mapped_column(ForeignKey("dishes.id"))
     created_at: Mapped[datetime.datetime] = mapped_column(TIMESTAMP(timezone=True), default=current_moscow_datetime)

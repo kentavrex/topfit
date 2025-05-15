@@ -10,4 +10,5 @@ class SetNutritionGoalStates(StatesGroup):
     waiting_weight = State()
     waiting_age = State()
     waiting_goal = State()
+    waiting_activity = State()
     waiting_gender = State()

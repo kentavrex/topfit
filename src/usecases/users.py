@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from usecases.errors import UserNutritionNotSetError
 from usecases.interfaces import AIClientInterface, DBRepositoryInterface
-from usecases.schemas import GoalType, NutritionData, NutritionGoalSchema, NutritionSchema, UserSchema
+from usecases.schemas import GoalType, NutritionData, NutritionGoalSchema, NutritionSchema, UserSchema, ActivityType
 
 
 class UsersUseCase:
@@ -42,15 +42,26 @@ class UsersUseCase:
         return bmr + 5 if goal_data.is_male else bmr - 161
 
     @staticmethod
-    def __calculate_daily_calories(bmr: float, goal_type: GoalType) -> float:
+    def __calculate_daily_calories(bmr: float, goal_data: NutritionGoalSchema) -> float:
         """Рассчитываем дневную норму калорий на основе цели"""
-        match goal_type:
+        base = bmr
+        match goal_data.activity_type:
+            case ActivityType.MINIMUM:
+                base *= 1.2
+            case ActivityType.AVERAGE:
+                base *= 1.55
+            case ActivityType.MINIMUM:
+                base *= 1.7
+            case _:
+                raise ValueError("Некорректное значение activity_number")
+
+        match goal_data.goal_type:
             case GoalType.LOSE_WEIGHT:
-                return (bmr * 1.2) * 0.85  # Снижение на 15%
+                return base * 0.85  # Снижение на 15%
             case GoalType.SUPPORT_FORM:
-                return bmr * 1.55  # Поддержка формы
+                return base  # Поддержка формы
             case GoalType.GAIN_WEIGHT:
-                return (bmr * 1.7) * 1.15  # Увеличение на 15%
+                return base * 1.15  # Увеличение на 15%
             case _:
                 raise ValueError("Некорректное значение goal_number")
 
@@ -71,5 +82,5 @@ class UsersUseCase:
     def __calculate_nutrition_goal(self, goal_data: NutritionGoalSchema) -> NutritionData:
         """Основная функция для расчёта КБЖУ"""
         bmr = self.__calculate_bmr(goal_data)
-        daily_calories = self.__calculate_daily_calories(bmr=bmr, goal_type=goal_data.nutrition_goal_type)
+        daily_calories = self.__calculate_daily_calories(bmr=bmr, goal_data=goal_data)
         return self.__calculate_macros(daily_calories)
