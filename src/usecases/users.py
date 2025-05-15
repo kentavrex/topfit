@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from usecases.errors import UserNutritionNotSetError
 from usecases.interfaces import AIClientInterface, DBRepositoryInterface
-from usecases.schemas import GoalType, NutritionData, NutritionGoalSchema, NutritionSchema, UserSchema, ActivityType
+from usecases.schemas import ActivityType, GoalType, NutritionData, NutritionGoalSchema, NutritionSchema, UserSchema
 
 
 class UsersUseCase:

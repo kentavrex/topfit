@@ -12,7 +12,7 @@ from bot.validators import GoalValidator
 from dependencies import container
 from usecases import DishRecognitionUseCase, RecommendationUseCase, StatisticsUseCase, UsersUseCase
 from usecases.errors import AudioToTextError, MaxRetryError, UserNutritionNotSetError
-from usecases.schemas import GoalType, NutritionGoalSchema, ActivityType
+from usecases.schemas import ActivityType, GoalType, NutritionGoalSchema
 
 router = Router()
 

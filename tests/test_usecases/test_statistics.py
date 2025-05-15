@@ -89,7 +89,6 @@ async def test_get_monthly_statistics_mixed_days():
             assert stat.calories == Decimal("0")
 
 
-
 @pytest.mark.asyncio
 async def test_get_monthly_statistics_all_empty():
     db_repo = AsyncMock()

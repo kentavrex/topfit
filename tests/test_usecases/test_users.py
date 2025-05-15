@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from usecases.schemas import GoalType, NutritionGoalSchema
+from usecases.schemas import ActivityType, GoalType, NutritionGoalSchema
 from usecases.users import UsersUseCase
 
 
@@ -18,7 +18,12 @@ async def test_set_nutrition_goal(mocker):
     await usecase.set_nutrition_goal(
         user_id=1,
         goal_data=NutritionGoalSchema(
-            weight=70, height=175, age=25, is_male=True, nutrition_goal_type=GoalType.SUPPORT_FORM
+            weight=70,
+            height=175,
+            age=25,
+            is_male=True,
+            activity_type=ActivityType.MAXIMUM,
+            nutrition_goal_type=GoalType.SUPPORT_FORM,
         ),
     )
 

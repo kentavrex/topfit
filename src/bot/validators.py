@@ -1,4 +1,4 @@
-from usecases.schemas import GoalType, ActivityType
+from usecases.schemas import ActivityType, GoalType
 
 
 class GoalValidator:
@@ -47,7 +47,6 @@ class GoalValidator:
             raise ValueError
         except ValueError:
             raise ValueError("Введите корректный номер уровня активности.") from None
-
 
     @classmethod
     def validate_goal(cls, value: str) -> int:
