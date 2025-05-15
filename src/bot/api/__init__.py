@@ -6,7 +6,7 @@ import magic
 from aiogram import F, Router, types
 from aiogram.fsm.context import FSMContext
 
-from bot.keyboards import goal_set_kb, goal_update_kb, statistics_set_kb, user_kb
+from bot.keyboards import goal_set_kb, goal_update_kb, statistics_set_kb, unlike_dish_or_back_kb, user_kb
 from bot.states import AddMealStates, SetNutritionGoalStates
 from bot.validators import GoalValidator
 from dependencies import container
@@ -122,6 +122,16 @@ async def send_dish_info(message: types.Message, dish_data):
         f"🍞 *Углеводы:* {dish_data.carbohydrates:.1f} г\n"
         f"🔥 *Калории:* {dish_data.calories:.1f} ккал\n",
         parse_mode="Markdown",
+        reply_markup=unlike_dish_or_back_kb,
+    )
+
+
+@router.message(F.text.lower() == "блюдо не понравилось")
+async def unlike_dish(message: types.Message):
+    await message.delete()
+    await message.answer(
+        "Мы отметили, что блюдо вам не понравилось и оно не будет учитываться при генерации рекомендаций!",
+        reply_markup=user_kb,
     )
 
 
@@ -165,7 +175,7 @@ async def get_monthly_statistics(message: types.Message):
 
     text = "📅 **Статистика: калории/белки/жиры/углеводы**\n" + "\n".join(month_data)
     await message.bot.delete_message(chat_id=message.chat.id, message_id=processing_message.message_id)
-    await message.answer(text, parse_mode="Markdown")
+    await message.answer(text, parse_mode="Markdown", reply_markup=user_kb)
 
 
 @router.message(F.text.lower() == "ai рекомендация")

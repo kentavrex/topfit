@@ -35,3 +35,8 @@ statistics_set_kb = ReplyKeyboardMarkup(
     keyboard=[[KeyboardButton(text="Статистика за месяц"), KeyboardButton(text="Главное меню")]],
     resize_keyboard=True,
 )
+
+unlike_dish_or_back_kb = ReplyKeyboardMarkup(
+    keyboard=[[KeyboardButton(text="Блюдо не понравилось"), KeyboardButton(text="Главное меню")]],
+    resize_keyboard=True,
+)
