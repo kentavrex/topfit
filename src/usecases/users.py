@@ -50,12 +50,12 @@ class UsersUseCase:
                 base *= 1.2
             case ActivityType.AVERAGE:
                 base *= 1.55
-            case ActivityType.MINIMUM:
+            case ActivityType.MAXIMUM:
                 base *= 1.7
             case _:
                 raise ValueError("Некорректное значение activity_number")
 
-        match goal_data.goal_type:
+        match goal_data.nutrition_goal_type:
             case GoalType.LOSE_WEIGHT:
                 return base * 0.85  # Снижение на 15%
             case GoalType.SUPPORT_FORM:
